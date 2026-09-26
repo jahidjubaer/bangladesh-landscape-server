@@ -29,7 +29,7 @@ function spotFacts(s) {
   };
 }
 
-function buildPrompt(district, spots, input) {
+function buildPrompt(district, spots, input, lang) {
   const facts = {
     district: {
       name: district.name.bn,
@@ -54,7 +54,14 @@ function buildPrompt(district, spots, input) {
     startDate: input.startDate ? new Date(input.startDate).toISOString().slice(0, 10) : null,
   };
 
-  return `তুমি বাংলাদেশের একজন অভিজ্ঞ ট্যুর প্ল্যানার। নিচের VERIFIED_FACTS ব্লকের তথ্য মাঠপর্যায়ে যাচাই করা — ভাড়া, রুট, সময়, সতর্কতা শুধুমাত্র এখান থেকেই নেবে, নিজে থেকে কোনো দাম/রুট বানাবে না। যেখানে তথ্য নেই সেখানে অনুমান না করে সাধারণ পরামর্শ দেবে।
+  const langInstruction =
+    lang === 'en'
+      ? 'IMPORTANT: The traveler is an English speaker. Write ALL output text values (title, summary, budgetVerdict, day titles, activities, meals, stay, transport, costBreakdown items, warnings, hiddenPlaces, tips) in ENGLISH, translating the Bangla source facts faithfully. Keep proper nouns (place names) transliterated, e.g. "Tanguar Haor". Numbers in Western digits.'
+      : 'সব টেক্সট বাংলায় লিখবে।';
+
+  return `${langInstruction}
+
+তুমি বাংলাদেশের একজন অভিজ্ঞ ট্যুর প্ল্যানার। নিচের VERIFIED_FACTS ব্লকের তথ্য মাঠপর্যায়ে যাচাই করা — ভাড়া, রুট, সময়, সতর্কতা শুধুমাত্র এখান থেকেই নেবে, নিজে থেকে কোনো দাম/রুট বানাবে না। যেখানে তথ্য নেই সেখানে অনুমান না করে সাধারণ পরামর্শ দেবে।
 
 VERIFIED_FACTS:
 ${JSON.stringify(facts, null, 1)}
@@ -90,12 +97,12 @@ function parsePlanJSON(text) {
   return JSON.parse(raw.slice(start, end + 1));
 }
 
-async function generateWithClaude(district, spots, input) {
+async function generateWithClaude(district, spots, input, lang) {
   const client = new Anthropic(); // resolves ANTHROPIC_API_KEY from env
   const response = await client.messages.create({
     model: PLAN_MODEL,
     max_tokens: 16000,
-    messages: [{ role: 'user', content: buildPrompt(district, spots, input) }],
+    messages: [{ role: 'user', content: buildPrompt(district, spots, input, lang) }],
   });
 
   if (response.stop_reason === 'refusal') {
@@ -109,13 +116,13 @@ async function generateWithClaude(district, spots, input) {
 }
 
 // Free-tier provider (Google AI Studio). JSON mode via responseMimeType.
-async function generateWithGemini(district, spots, input) {
+async function generateWithGemini(district, spots, input, lang) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${process.env.GEMINI_API_KEY}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: buildPrompt(district, spots, input) }] }],
+      contents: [{ parts: [{ text: buildPrompt(district, spots, input, lang) }] }],
       generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 8192 },
     }),
   });
@@ -131,7 +138,7 @@ async function generateWithGemini(district, spots, input) {
 
 // Deterministic fallback when no AI API key is configured (dev mode).
 // Distributes spots across days by proximity order and sums verified costs.
-function generateMock(district, spots, input) {
+function generateMock(district, spots, input, _lang) {
   const perDay = Math.max(1, Math.ceil(spots.length / input.days));
   const days = [];
   const transportBase = 900 * input.members; // rough Dhaka→district bus per head from facts
@@ -173,7 +180,7 @@ function generateMock(district, spots, input) {
   return { output, model: 'mock' };
 }
 
-export async function generatePlan(input) {
+export async function generatePlan(input, lang) {
   const district = await District.findOne({ _id: input.district, isLaunched: true });
   if (!district) throw new AppError('District not found', 404);
 
@@ -187,7 +194,7 @@ export async function generatePlan(input) {
     : process.env.ANTHROPIC_API_KEY
       ? generateWithClaude
       : generateMock;
-  const { output, model } = await generator(district, spots, input);
+  const { output, model } = await generator(district, spots, input, lang);
 
   return {
     district,

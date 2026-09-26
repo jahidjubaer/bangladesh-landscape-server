@@ -49,7 +49,8 @@ function toPublicJSON(plan, { full }) {
 export async function createPlan(req, res, next) {
   try {
     const input = validateInput(req.body);
-    const { district, output, modelMeta } = await generatePlan(input);
+    const lang = req.body.lang === 'en' ? 'en' : 'bn';
+    const { district, output, modelMeta } = await generatePlan(input, lang);
 
     const plan = await Plan.create({
       user: req.user._id,

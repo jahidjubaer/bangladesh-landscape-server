@@ -132,7 +132,7 @@ export async function getMine(req, res, next) {
   }
 }
 
-// Edit own post â€” re-enters moderation queue
+// Edit own post — re-enters moderation queue
 export async function update(req, res, next) {
   try {
     const blog = await Blog.findOne({ _id: req.params.id, author: req.user._id });

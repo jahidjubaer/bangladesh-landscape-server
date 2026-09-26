@@ -1,4 +1,4 @@
-﻿import GuideProfile from '../models/GuideProfile.js';
+import GuideProfile from '../models/GuideProfile.js';
 import Booking from '../models/Booking.js';
 import District from '../models/District.js';
 import User from '../models/User.js';
@@ -55,14 +55,14 @@ export async function apply(req, res, next) {
     const b = req.body;
     let user = req.user;
 
-    // No session â†’ create the account as part of the application
+    // No session → create the account as part of the application
     if (!user) {
       const phone = normalizeBdPhone(b.phone);
       if (!b.name || b.name.trim().length < 2) throw new AppError('Name is required', 400);
       if (!phone) throw new AppError('A valid mobile number is required', 400);
       if (!b.password || b.password.length < 6) throw new AppError('Password must be at least 6 characters', 400);
       const existing = await User.findOne({ phone });
-      if (existing) throw new AppError('This number already has an account â€” log in first, then apply', 409);
+      if (existing) throw new AppError('This number already has an account — log in first, then apply', 409);
       user = await User.create({
         name: b.name.trim(),
         phone,
@@ -114,7 +114,7 @@ export async function apply(req, res, next) {
 
     res.status(201).json({
       success: true,
-      message: 'Application submitted â€” we will verify and contact you',
+      message: 'Application submitted — we will verify and contact you',
       data: { applicationStatus: guide.applicationStatus, accountCreated: !req.user },
     });
   } catch (err) {
@@ -158,7 +158,7 @@ export async function screen(req, res, next) {
     guide.applicationStatus = 'screened';
     guide.screenedBy = req.user._id;
     await guide.save();
-    res.json({ success: true, message: 'Application screened â€” awaiting admin verification' });
+    res.json({ success: true, message: 'Application screened — awaiting admin verification' });
   } catch (err) {
     next(err);
   }

@@ -1,4 +1,4 @@
-﻿import Payment from '../models/Payment.js';
+import Payment from '../models/Payment.js';
 import Plan from '../models/Plan.js';
 import Setting from '../models/Setting.js';
 import AppError from '../utils/AppError.js';
@@ -6,7 +6,7 @@ import env from '../config/env.js';
 import { initPayment, validateSslPayment, activeGateway, newTranId } from '../services/paymentService.js';
 
 async function fulfill(payment, gatewayData) {
-  if (payment.status === 'success') return; // idempotent â€” IPN + callback may both fire
+  if (payment.status === 'success') return; // idempotent — IPN + callback may both fire
   payment.status = 'success';
   payment.gatewayTranId = gatewayData?.bank_tran_id || gatewayData?.tran_id || '';
   payment.raw = gatewayData;
@@ -42,7 +42,7 @@ export async function init(req, res, next) {
   try {
     // Never expose the mock gateway outside development
     if (activeGateway === 'mock' && env.nodeEnv === 'production') {
-      throw new AppError('Online payment is not available yet â€” use bKash send money', 503);
+      throw new AppError('Online payment is not available yet — use bKash send money', 503);
     }
 
     const plan = await Plan.findOne({ publicId: req.body.planPublicId, user: req.user._id });
@@ -64,7 +64,7 @@ export async function init(req, res, next) {
   }
 }
 
-// SSLCommerz browser redirects (POST) â€” validate server-side before fulfilling
+// SSLCommerz browser redirects (POST) — validate server-side before fulfilling
 export async function callbackSuccess(req, res, next) {
   try {
     const { tran_id: tranId, val_id: valId } = req.body;
@@ -206,7 +206,7 @@ export async function adminRejectPayment(req, res, next) {
   }
 }
 
-// Mock gateway (dev only): GET link â†’ confirm page â†’ success
+// Mock gateway (dev only): GET link → confirm page → success
 export async function mockPay(req, res, next) {
   try {
     if (activeGateway !== 'mock') throw new AppError('Mock gateway disabled', 404);
@@ -227,11 +227,11 @@ export async function mockPay(req, res, next) {
 .card{background:#fff;padding:32px;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,.08);text-align:center}
 a{display:inline-block;margin:8px;padding:10px 24px;border-radius:8px;text-decoration:none;color:#fff}
 .ok{background:#059669}.no{background:#9ca3af}</style></head><body>
-<div class="card"><h2>ðŸ§ª Mock Payment Gateway</h2>
-<p>Transaction: <code>${payment.tranId}</code> â€” <strong>${payment.amount} BDT</strong></p>
-<p>(SSLCommerz credentials set à¦•à¦°à¦¾ à¦¹à¦²à§‡ à¦à¦–à¦¾à¦¨à§‡ à¦†à¦¸à¦² à¦—à§‡à¦Ÿà¦“à¦¯à¦¼à§‡ à¦–à§à¦²à¦¬à§‡)</p>
-<a class="ok" href="?tranId=${payment.tranId}&confirm=1">âœ“ Pay success</a>
-<a class="no" href="?tranId=${payment.tranId}&confirm=0">âœ— Cancel</a></div></body></html>`);
+<div class="card"><h2>🧪 Mock Payment Gateway</h2>
+<p>Transaction: <code>${payment.tranId}</code> — <strong>${payment.amount} BDT</strong></p>
+<p>(SSLCommerz credentials set করা হলে এখানে আসল গেটওয়ে খুলবে)</p>
+<a class="ok" href="?tranId=${payment.tranId}&confirm=1">✓ Pay success</a>
+<a class="no" href="?tranId=${payment.tranId}&confirm=0">✗ Cancel</a></div></body></html>`);
   } catch (err) {
     next(err);
   }
