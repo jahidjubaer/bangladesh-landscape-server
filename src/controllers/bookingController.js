@@ -1,4 +1,4 @@
-import Booking from '../models/Booking.js';
+﻿import Booking from '../models/Booking.js';
 import GuideProfile from '../models/GuideProfile.js';
 import Setting from '../models/Setting.js';
 import AppError from '../utils/AppError.js';
@@ -155,7 +155,7 @@ export async function rejectBooking(req, res, next) {
     const booking = await loadGuideBooking(req, req.params.id);
     if (booking.status !== 'requested') throw new AppError('Only pending requests can be rejected', 409);
     booking.status = 'rejected';
-    booking.rejectionReason = req.body.reason || '';
+    booking.rejectionReason = req.body?.reason || '';
     await booking.save();
     res.json({ success: true, message: 'Booking rejected' });
   } catch (err) {
@@ -178,12 +178,12 @@ export async function cancelBooking(req, res, next) {
   }
 }
 
-// Review after the trip: confirmed + dates passed → completed + rating
+// Review after the trip: confirmed + dates passed â†’ completed + rating
 export async function reviewBooking(req, res, next) {
   try {
     const { rating, comment } = req.body;
     const r = Number(rating);
-    if (!r || r < 1 || r > 5) throw new AppError('Rating must be 1–5', 400);
+    if (!r || r < 1 || r > 5) throw new AppError('Rating must be 1â€“5', 400);
 
     const booking = await Booking.findOne({ _id: req.params.id, user: req.user._id });
     if (!booking) throw new AppError('Booking not found', 404);

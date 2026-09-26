@@ -4,6 +4,7 @@ import fs from 'fs';
 import { requireAuth, requireRole } from '../middlewares/auth.js';
 import { PRIVATE_DIR } from '../middlewares/upload.js';
 import * as guideCtrl from '../controllers/guideController.js';
+import * as blogCtrl from '../controllers/blogController.js';
 import AppError from '../utils/AppError.js';
 
 const router = Router();
@@ -18,6 +19,12 @@ router.patch('/guide-applications/:id/screen', guideCtrl.screen);
 // Admin-only verification decisions
 router.patch('/guide-applications/:id/approve', requireRole('admin'), guideCtrl.approve);
 router.patch('/guide-applications/:id/reject', requireRole('admin'), guideCtrl.reject);
+
+// Blog moderation (moderators + admins)
+router.get('/blogs', blogCtrl.moderationList);
+router.get('/blogs/:id', blogCtrl.moderationGet);
+router.patch('/blogs/:id/approve', blogCtrl.approveBlog);
+router.patch('/blogs/:id/reject', blogCtrl.rejectBlog);
 
 // Private identity documents (NID, নাগরিক সনদপত্র) — never on a public URL
 router.get('/files/:filename', (req, res, next) => {
