@@ -5,6 +5,7 @@ const bookingSchema = new mongoose.Schema(
     type: { type: String, enum: ['guide', 'boat', 'hotel', 'transport'], default: 'guide' },
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     guide: { type: mongoose.Schema.Types.ObjectId, ref: 'GuideProfile', index: true },
+    listing: { type: mongoose.Schema.Types.ObjectId, ref: 'Listing', index: true },
     district: { type: mongoose.Schema.Types.ObjectId, ref: 'District' },
     dates: {
       from: { type: Date, required: true },

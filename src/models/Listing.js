@@ -23,7 +23,8 @@ const listingSchema = new mongoose.Schema(
       lng: { type: Number, default: null },
     },
     status: { type: String, enum: ['pending', 'approved', 'suspended'], default: 'pending', index: true },
-    isBookable: { type: Boolean, default: false }, // stays false until booking launch
+    isBookable: { type: Boolean, default: false }, // per-listing switch; district feature flag gates too
+    blockedDates: [Date], // partner-blocked days + implicit conflicts from confirmed bookings
   },
   { timestamps: true }
 );

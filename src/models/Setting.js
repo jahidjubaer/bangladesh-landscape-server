@@ -7,6 +7,7 @@ const settingSchema = new mongoose.Schema(
     planPrice: { type: Number, default: 150 }, // BDT per PDF download
     freePlanCreditsForNewUser: { type: Number, default: 1 },
     guideCommissionPct: { type: Number, default: 15 },
+    listingCommissionPct: { type: Number, default: 10 },
     bookingConfirmWindowHours: { type: Number, default: 12 },
     promptVersion: { type: String, default: 'v1' },
     // Manual bKash send-money (personal number, no merchant account)

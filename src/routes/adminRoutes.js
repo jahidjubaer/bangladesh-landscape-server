@@ -52,6 +52,7 @@ router.get('/listings', listingCtrl.adminList);
 router.post('/listings', listingCtrl.adminCreate);
 router.get('/listings/:id', listingCtrl.adminGet);
 router.patch('/listings/:id', listingCtrl.adminUpdate);
+router.patch('/listings/:id/owner', listingCtrl.adminAssignOwner);
 router.delete('/listings/:id', listingCtrl.adminDelete);
 
 // Manual payment verification

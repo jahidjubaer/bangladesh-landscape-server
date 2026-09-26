@@ -12,6 +12,7 @@ import paymentRoutes from './routes/paymentRoutes.js';
 import guideRoutes from './routes/guideRoutes.js';
 import bookingRoutes from './routes/bookingRoutes.js';
 import moderationRoutes from './routes/moderationRoutes.js';
+import partnerRoutes from './routes/partnerRoutes.js';
 import blogRoutes from './routes/blogRoutes.js';
 import sitemapRoutes from './routes/sitemapRoutes.js';
 import { UPLOAD_DIR } from './middlewares/upload.js';
@@ -40,6 +41,7 @@ app.use('/api/v1/payments', paymentRoutes);
 app.use('/api/v1/guides', guideRoutes);
 app.use('/api/v1/bookings', bookingRoutes);
 app.use('/api/v1/moderation', moderationRoutes);
+app.use('/api/v1/partner', partnerRoutes);
 app.use('/api/v1/blogs', blogRoutes);
 app.use('/', sitemapRoutes);
 
