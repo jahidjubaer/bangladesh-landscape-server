@@ -9,6 +9,19 @@ const router = Router();
 
 router.get('/stats', publicStats);
 
+// Photo attribution (CC BY-SA compliance) — uploads/image-credits.json
+router.get('/credits', async (_req, res) => {
+  try {
+    const { readFile } = await import('fs/promises');
+    const raw = await readFile('uploads/image-credits.json', 'utf8');
+    let credits = JSON.parse(raw.replace(/^﻿/, ''));
+    if (!Array.isArray(credits)) credits = [credits];
+    res.json({ success: true, data: { credits } });
+  } catch {
+    res.json({ success: true, data: { credits: [] } });
+  }
+});
+
 router.get('/districts', districtCtrl.listLaunched);
 router.get('/districts/:slug', districtCtrl.getBySlug);
 router.get('/districts/:slug/listings', listingCtrl.listByDistrict);
