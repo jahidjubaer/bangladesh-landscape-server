@@ -7,11 +7,21 @@ import { getSettings, updateSettings } from '../controllers/settingController.js
 import * as payCtrl from '../controllers/paymentController.js';
 import * as adCtrl from '../controllers/adController.js';
 import * as listingCtrl from '../controllers/listingController.js';
+import * as userAdminCtrl from '../controllers/userAdminController.js';
 import AppError from '../utils/AppError.js';
 
 const router = Router();
 
 router.use(requireAuth, requireRole('admin'));
+
+// Operations overview
+router.get('/overview', userAdminCtrl.overview);
+
+// User management
+router.get('/users', userAdminCtrl.listUsers);
+router.patch('/users/:id/moderator', userAdminCtrl.setModerator);
+router.patch('/users/:id/verified-author', userAdminCtrl.setVerifiedAuthor);
+router.patch('/users/:id/status', userAdminCtrl.setStatus);
 
 // Districts
 router.get('/districts', districtCtrl.adminList);

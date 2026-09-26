@@ -50,3 +50,54 @@ export async function logout(_req, res) {
 export async function me(req, res) {
   res.json({ success: true, data: { user: req.user.toSafeJSON() } });
 }
+
+// PATCH /auth/me — name (and optional email) only
+export async function updateMe(req, res, next) {
+  try {
+    const { name, email } = req.body || {};
+    if (name !== undefined) {
+      if (typeof name !== 'string' || name.trim().length < 2) throw new AppError('Name must be at least 2 characters', 400);
+      req.user.name = name.trim();
+    }
+    if (email !== undefined) {
+      if (email === '' || email === null) req.user.email = undefined;
+      else if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) req.user.email = String(email).toLowerCase().trim();
+      else throw new AppError('Email address is not valid', 400);
+    }
+    await req.user.save();
+    res.json({ success: true, message: 'Profile updated', data: { user: req.user.toSafeJSON() } });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// POST /auth/change-password { currentPassword, newPassword }
+export async function changePassword(req, res, next) {
+  try {
+    const { currentPassword, newPassword } = req.body || {};
+    if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 6) {
+      throw new AppError('New password must be at least 6 characters', 400);
+    }
+    const user = await User.findById(req.user._id).select('+passwordHash');
+    if (!currentPassword || !(await user.comparePassword(currentPassword))) {
+      throw new AppError('Current password is incorrect', 401);
+    }
+    user.passwordHash = await User.hashPassword(newPassword);
+    await user.save();
+    res.json({ success: true, message: 'Password changed' });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// POST /auth/avatar (multipart: image)
+export async function updateAvatar(req, res, next) {
+  try {
+    if (!req.file) throw new AppError('No image file received (field name: image)', 400);
+    req.user.avatarUrl = `/uploads/${req.file.filename}`;
+    await req.user.save();
+    res.json({ success: true, message: 'Avatar updated', data: { avatarUrl: req.user.avatarUrl } });
+  } catch (err) {
+    next(err);
+  }
+}
