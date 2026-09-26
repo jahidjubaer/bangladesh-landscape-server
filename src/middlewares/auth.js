@@ -25,6 +25,21 @@ export async function requireAuth(req, _res, next) {
   }
 }
 
+// Attaches req.user when a valid session cookie exists, but never rejects
+export async function optionalAuth(req, _res, next) {
+  try {
+    const token = req.cookies[COOKIE_NAME];
+    if (token) {
+      const payload = verifyToken(token);
+      const user = await User.findById(payload.sub);
+      if (user && user.status !== 'suspended') req.user = user;
+    }
+  } catch {
+    // invalid token → treat as anonymous
+  }
+  next();
+}
+
 // Usage: router.get('/x', requireAuth, requireRole('admin', 'moderator'), handler)
 export function requireRole(...roles) {
   return (req, _res, next) => {
