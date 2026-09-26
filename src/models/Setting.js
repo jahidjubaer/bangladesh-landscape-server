@@ -9,6 +9,8 @@ const settingSchema = new mongoose.Schema(
     guideCommissionPct: { type: Number, default: 15 },
     bookingConfirmWindowHours: { type: Number, default: 12 },
     promptVersion: { type: String, default: 'v1' },
+    // Manual bKash send-money (personal number, no merchant account)
+    bkashPersonalNumber: { type: String, default: '' },
   },
   { timestamps: true }
 );

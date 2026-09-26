@@ -27,3 +27,28 @@ export const uploadImage = multer({
     cb(new AppError('Only JPG, PNG or WebP images are allowed', 400));
   },
 });
+
+// PRIVATE storage for identity documents (NID, নাগরিক সনদপত্র).
+// Lives outside the public /uploads static mount; served only via an
+// admin/moderator-guarded route.
+export const PRIVATE_DIR = path.resolve('private-uploads');
+if (!fs.existsSync(PRIVATE_DIR)) fs.mkdirSync(PRIVATE_DIR, { recursive: true });
+
+const PRIVATE_ALLOWED = { ...ALLOWED, 'application/pdf': '.pdf' };
+
+const privateStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, PRIVATE_DIR),
+  filename: (_req, file, cb) => {
+    const ext = PRIVATE_ALLOWED[file.mimetype] || path.extname(file.originalname).toLowerCase();
+    cb(null, `${Date.now()}-${crypto.randomBytes(8).toString('hex')}${ext}`);
+  },
+});
+
+export const uploadPrivateDoc = multer({
+  storage: privateStorage,
+  limits: { fileSize: 8 * 1024 * 1024 }, // 8MB
+  fileFilter: (_req, file, cb) => {
+    if (PRIVATE_ALLOWED[file.mimetype]) return cb(null, true);
+    cb(new AppError('Only JPG, PNG, WebP or PDF files are allowed', 400));
+  },
+});

@@ -1,4 +1,5 @@
 import Plan from '../models/Plan.js';
+import Payment from '../models/Payment.js';
 import Setting from '../models/Setting.js';
 import AppError from '../utils/AppError.js';
 import { generatePlan } from '../services/planGenerator.js';
@@ -76,6 +77,11 @@ export async function getByPublicId(req, res, next) {
     const full = plan.status === 'paid' && isOwner;
     const settings = await Setting.get();
 
+    // Owner with an unverified manual bKash payment sees a "pending" notice
+    const pendingVerification = isOwner
+      ? Boolean(await Payment.exists({ ref: plan._id, status: 'pending-verification' }))
+      : false;
+
     res.json({
       success: true,
       data: {
@@ -83,6 +89,11 @@ export async function getByPublicId(req, res, next) {
         isOwner,
         planPrice: settings.planPrice,
         freeCredits: req.user?.freePlanCredits ?? 0,
+        pendingVerification,
+        paymentOptions: {
+          bkashNumber: settings.bkashPersonalNumber || null,
+          online: process.env.SSLCOMMERZ_STORE_ID ? true : process.env.NODE_ENV !== 'production',
+        },
       },
     });
   } catch (err) {

@@ -5,6 +5,7 @@ import Setting from '../models/Setting.js';
 import AppError from '../utils/AppError.js';
 
 const PLAN_MODEL = process.env.PLAN_MODEL || 'claude-opus-5';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
 const FOOD_LABELS = { local: 'লোকাল/দেশি খাবার', special: 'স্পেশাল খাবার (হাওরের মাছ, বিশেষ পদ)', regular: 'সাধারণ খাবার' };
 const STYLE_LABELS = { adventure: 'অ্যাডভেঞ্চার', relaxed: 'নিরিবিলি/আরামদায়ক', family: 'পরিবারসহ', other: 'সাধারণ' };
@@ -107,7 +108,28 @@ async function generateWithClaude(district, spots, input) {
   return { output: parsePlanJSON(text), model: response.model };
 }
 
-// Deterministic fallback when no ANTHROPIC_API_KEY is configured (dev mode).
+// Free-tier provider (Google AI Studio). JSON mode via responseMimeType.
+async function generateWithGemini(district, spots, input) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${process.env.GEMINI_API_KEY}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: buildPrompt(district, spots, input) }] }],
+      generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 8192 },
+    }),
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new AppError(`Gemini API error ${res.status}: ${errText.slice(0, 300)}`, 502);
+  }
+  const data = await res.json();
+  const text = data.candidates?.[0]?.content?.parts?.map((p) => p.text).join('') || '';
+  if (!text) throw new AppError('Gemini returned an empty response', 502);
+  return { output: parsePlanJSON(text), model: GEMINI_MODEL };
+}
+
+// Deterministic fallback when no AI API key is configured (dev mode).
 // Distributes spots across days by proximity order and sums verified costs.
 function generateMock(district, spots, input) {
   const perDay = Math.max(1, Math.ceil(spots.length / input.days));
@@ -159,7 +181,12 @@ export async function generatePlan(input) {
   if (spots.length === 0) throw new AppError('Select at least one valid spot', 400);
 
   const settings = await Setting.get();
-  const generator = process.env.ANTHROPIC_API_KEY ? generateWithClaude : generateMock;
+  // Provider priority: free Gemini tier first, Claude if configured, else mock
+  const generator = process.env.GEMINI_API_KEY
+    ? generateWithGemini
+    : process.env.ANTHROPIC_API_KEY
+      ? generateWithClaude
+      : generateMock;
   const { output, model } = await generator(district, spots, input);
 
   return {

@@ -4,6 +4,7 @@ import { uploadImage } from '../middlewares/upload.js';
 import * as districtCtrl from '../controllers/districtController.js';
 import * as spotCtrl from '../controllers/spotController.js';
 import { getSettings, updateSettings } from '../controllers/settingController.js';
+import * as payCtrl from '../controllers/paymentController.js';
 import AppError from '../utils/AppError.js';
 
 const router = Router();
@@ -27,6 +28,11 @@ router.delete('/spots/:id', spotCtrl.adminDelete);
 // Settings
 router.get('/settings', getSettings);
 router.patch('/settings', updateSettings);
+
+// Manual payment verification
+router.get('/payments', payCtrl.adminListPayments);
+router.patch('/payments/:id/approve', payCtrl.adminApprovePayment);
+router.patch('/payments/:id/reject', payCtrl.adminRejectPayment);
 
 // Image upload → returns a URL usable in district/spot forms
 router.post('/uploads', uploadImage.single('image'), (req, res, next) => {

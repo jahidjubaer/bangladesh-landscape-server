@@ -12,7 +12,7 @@ export async function getSettings(_req, res, next) {
 export async function updateSettings(req, res, next) {
   try {
     const settings = await Setting.get();
-    const editable = ['planPrice', 'freePlanCreditsForNewUser', 'guideCommissionPct', 'bookingConfirmWindowHours', 'promptVersion'];
+    const editable = ['planPrice', 'freePlanCreditsForNewUser', 'guideCommissionPct', 'bookingConfirmWindowHours', 'promptVersion', 'bkashPersonalNumber'];
     for (const key of editable) {
       if (req.body[key] !== undefined) settings[key] = req.body[key];
     }

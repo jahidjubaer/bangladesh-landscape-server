@@ -3,7 +3,7 @@ import Plan from '../models/Plan.js';
 import Setting from '../models/Setting.js';
 import AppError from '../utils/AppError.js';
 import env from '../config/env.js';
-import { initPayment, validateSslPayment, activeGateway } from '../services/paymentService.js';
+import { initPayment, validateSslPayment, activeGateway, newTranId } from '../services/paymentService.js';
 
 async function fulfill(payment, gatewayData) {
   if (payment.status === 'success') return; // idempotent — IPN + callback may both fire
@@ -40,6 +40,11 @@ async function redirectTarget(payment, result) {
 // POST /payments/init { planPublicId }
 export async function init(req, res, next) {
   try {
+    // Never expose the mock gateway outside development
+    if (activeGateway === 'mock' && env.nodeEnv === 'production') {
+      throw new AppError('Online payment is not available yet — use bKash send money', 503);
+    }
+
     const plan = await Plan.findOne({ publicId: req.body.planPublicId, user: req.user._id });
     if (!plan) throw new AppError('Plan not found', 404);
     if (plan.status === 'paid') throw new AppError('Plan already paid', 409);
@@ -110,6 +115,92 @@ export async function ipn(req, res, next) {
       await fail(payment, status === 'CANCELLED' ? 'cancelled' : 'failed', req.body);
     }
     res.status(200).end();
+  } catch (err) {
+    next(err);
+  }
+}
+
+// POST /payments/manual-bkash { planPublicId, trxId, senderNumber }
+// User already sent money to the personal bKash number; admin verifies by hand.
+export async function submitManualBkash(req, res, next) {
+  try {
+    const { planPublicId, trxId, senderNumber } = req.body;
+    if (!trxId || String(trxId).trim().length < 6) throw new AppError('Valid bKash TrxID is required', 400);
+    if (!senderNumber || !/^(\+?880|0)1[3-9]\d{8}$/.test(String(senderNumber).replace(/[\s-]/g, ''))) {
+      throw new AppError('Valid sender bKash number is required', 400);
+    }
+
+    const plan = await Plan.findOne({ publicId: planPublicId, user: req.user._id });
+    if (!plan) throw new AppError('Plan not found', 404);
+    if (plan.status === 'paid') throw new AppError('Plan already paid', 409);
+
+    const existing = await Payment.findOne({ ref: plan._id, status: 'pending-verification' });
+    if (existing) throw new AppError('A payment for this plan is already awaiting verification', 409);
+
+    const duplicateTrx = await Payment.findOne({ 'manual.trxId': trxId.trim() });
+    if (duplicateTrx) throw new AppError('This TrxID has already been submitted', 409);
+
+    const settings = await Setting.get();
+    await Payment.create({
+      user: req.user._id,
+      purpose: 'plan',
+      ref: plan._id,
+      gateway: 'bkash-manual',
+      tranId: newTranId(),
+      amount: settings.planPrice,
+      status: 'pending-verification',
+      manual: { senderNumber: String(senderNumber).trim(), trxId: String(trxId).trim() },
+    });
+
+    res.status(201).json({ success: true, message: 'Payment submitted for verification' });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ---------- Admin verification ----------
+
+export async function adminListPayments(req, res, next) {
+  try {
+    const filter = {};
+    if (req.query.status) filter.status = req.query.status;
+    const payments = await Payment.find(filter)
+      .populate('user', 'name phone')
+      .sort('-createdAt')
+      .limit(200);
+    res.json({ success: true, data: { payments } });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function adminApprovePayment(req, res, next) {
+  try {
+    const payment = await Payment.findById(req.params.id);
+    if (!payment) throw new AppError('Payment not found', 404);
+    if (payment.status !== 'pending-verification') throw new AppError('Payment is not awaiting verification', 409);
+
+    payment.verifiedBy = req.user._id;
+    payment.adminNote = req.body.note || '';
+    await fulfill(payment, { manual: true, trxId: payment.manual?.trxId });
+
+    res.json({ success: true, message: 'Payment approved, plan unlocked' });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function adminRejectPayment(req, res, next) {
+  try {
+    const payment = await Payment.findById(req.params.id);
+    if (!payment) throw new AppError('Payment not found', 404);
+    if (payment.status !== 'pending-verification') throw new AppError('Payment is not awaiting verification', 409);
+
+    payment.verifiedBy = req.user._id;
+    payment.adminNote = req.body.note || '';
+    await fail(payment, 'failed', { manual: true, rejected: true });
+
+    res.json({ success: true, message: 'Payment rejected' });
   } catch (err) {
     next(err);
   }

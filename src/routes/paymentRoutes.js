@@ -5,6 +5,7 @@ import * as payCtrl from '../controllers/paymentController.js';
 const router = Router();
 
 router.post('/init', requireAuth, payCtrl.init);
+router.post('/manual-bkash', requireAuth, payCtrl.submitManualBkash);
 
 // Gateway-facing endpoints (no auth — SSLCommerz posts to these)
 router.post('/callback/success', payCtrl.callbackSuccess);
