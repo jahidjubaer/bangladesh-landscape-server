@@ -10,6 +10,17 @@ const SANITIZE_OPTS = {
   allowedAttributes: {
     a: ['href', 'target', 'rel'],
     img: ['src', 'alt'],
+    // Quill 2 markup: bullets are <ol><li data-list="bullet">, alignment/indent via classes
+    li: ['data-list', 'class'],
+    p: ['class'],
+    h2: ['class'],
+    h3: ['class'],
+  },
+  allowedClasses: {
+    p: ['ql-align-center', 'ql-align-right', 'ql-align-justify', 'ql-indent-1', 'ql-indent-2', 'ql-indent-3'],
+    h2: ['ql-align-center', 'ql-align-right', 'ql-align-justify'],
+    h3: ['ql-align-center', 'ql-align-right', 'ql-align-justify'],
+    li: ['ql-align-center', 'ql-align-right', 'ql-align-justify', 'ql-indent-1', 'ql-indent-2', 'ql-indent-3'],
   },
   allowedSchemes: ['http', 'https'],
   transformTags: {
