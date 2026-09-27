@@ -2,6 +2,7 @@ import User from '../models/User.js';
 import AppError from '../utils/AppError.js';
 import { signToken, cookieOptions, COOKIE_NAME } from '../utils/token.js';
 import { validateRegister, validateLogin } from '../validators/authValidator.js';
+import { notify } from '../services/notifyService.js';
 
 function sendAuthResponse(res, user, statusCode, message) {
   const token = signToken(user._id.toString());
@@ -15,8 +16,30 @@ export async function register(req, res, next) {
   try {
     const { name, phone, email, password } = validateRegister(req.body);
 
+    // Referral: a valid code rewards both sides with one plan credit
+    let referrer = null;
+    if (req.body.ref && typeof req.body.ref === 'string') {
+      referrer = await User.findOne({ referralCode: req.body.ref.trim().toUpperCase() });
+    }
+
     const passwordHash = await User.hashPassword(password);
-    const user = await User.create({ name, phone, email, passwordHash });
+    const user = await User.create({
+      name,
+      phone,
+      email,
+      passwordHash,
+      referralCode: User.newReferralCode(),
+      ...(referrer && { referredBy: referrer._id }),
+    });
+
+    if (referrer) {
+      user.freePlanCredits += 1;
+      await user.save();
+      referrer.freePlanCredits += 1;
+      referrer.referralCount += 1;
+      await referrer.save();
+      await notify(referrer._id, 'referral-joined', { name: user.name }, '/profile');
+    }
 
     sendAuthResponse(res, user, 201, 'Registration successful');
   } catch (err) {
@@ -47,8 +70,13 @@ export async function logout(_req, res) {
     .json({ success: true, message: 'Logged out' });
 }
 
-export async function me(req, res) {
-  res.json({ success: true, data: { user: req.user.toSafeJSON() } });
+export async function me(req, res, next) {
+  try {
+    if (!req.user.referralCode) await req.user.ensureReferralCode(); // pre-feature accounts
+    res.json({ success: true, data: { user: req.user.toSafeJSON() } });
+  } catch (err) {
+    next(err);
+  }
 }
 
 // PATCH /auth/me — name (and optional email) only

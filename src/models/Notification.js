@@ -12,6 +12,7 @@ export const NOTIF_KINDS = [
   'blog-rejected',
   'guide-approved', // to applicant
   'guide-rejected',
+  'referral-joined', // to referrer: someone joined with their code
 ];
 
 // Messages are rendered client-side from `kind` + `data` (bilingual UI),
