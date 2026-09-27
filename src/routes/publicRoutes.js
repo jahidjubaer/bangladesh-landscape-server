@@ -5,10 +5,12 @@ import * as adCtrl from '../controllers/adController.js';
 import * as listingCtrl from '../controllers/listingController.js';
 import { publicStats } from '../controllers/statsController.js';
 import { districtWeather } from '../controllers/weatherController.js';
+import { gallery } from '../controllers/galleryController.js';
 
 const router = Router();
 
 router.get('/stats', publicStats);
+router.get('/gallery', gallery);
 
 // Photo attribution (CC BY-SA compliance) — uploads/image-credits.json
 router.get('/credits', async (_req, res) => {
