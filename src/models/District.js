@@ -19,6 +19,7 @@ const districtSchema = new mongoose.Schema(
       fireService: { type: String, default: '' },
     },
     isLaunched: { type: Boolean, default: false },
+    isVerified: { type: Boolean, default: false }, // locally verified (field-checked) info badge
     features: {
       guideBooking: { type: Boolean, default: false },
       boatBooking: { type: Boolean, default: false },

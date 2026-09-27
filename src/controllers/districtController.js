@@ -6,10 +6,19 @@ import AppError from '../utils/AppError.js';
 
 export async function listLaunched(_req, res, next) {
   try {
-    const districts = await District.find({ isLaunched: true })
-      .select('slug name division heroImageUrl overview bestSeason stayTypesAvailable')
-      .sort('name.bn');
-    res.json({ success: true, data: { districts } });
+    const [districts, counts] = await Promise.all([
+      District.find({ isLaunched: true })
+        .select('slug name division heroImageUrl overview bestSeason stayTypesAvailable isVerified')
+        .sort({ isVerified: -1, 'name.bn': 1 }),
+      Spot.aggregate([{ $match: { isActive: true } }, { $group: { _id: '$district', n: { $sum: 1 } } }]),
+    ]);
+    const countMap = Object.fromEntries(counts.map((c) => [c._id.toString(), c.n]));
+    res.json({
+      success: true,
+      data: {
+        districts: districts.map((d) => ({ ...d.toObject(), spotCount: countMap[d._id.toString()] || 0 })),
+      },
+    });
   } catch (err) {
     next(err);
   }
