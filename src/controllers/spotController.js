@@ -15,6 +15,15 @@ export async function browse(req, res, next) {
     if (req.query.category) filter.category = req.query.category;
     if (req.query.tag) filter.tags = req.query.tag;
 
+    // all=1: everything at once for the explore map (light fields, capped)
+    if (req.query.all === '1') {
+      const spots = await Spot.find(filter)
+        .populate('district', 'slug name')
+        .select('slug name category images location district')
+        .limit(500);
+      return res.json({ success: true, data: { spots, page: 1, hasMore: false } });
+    }
+
     // Photo-first ordering: spots with images lead the grid
     const spots = await Spot.find(filter)
       .populate('district', 'slug name isVerified')
