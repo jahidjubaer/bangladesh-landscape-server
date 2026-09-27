@@ -49,10 +49,10 @@ export async function list(req, res, next) {
       District.find({ _id: { $in: idsOf('district') } }).select('slug name heroImageUrl division isVerified'),
       Spot.find({ _id: { $in: idsOf('spot') }, isActive: true })
         .populate('district', 'slug name')
-        .select('slug name images category isHidden district'),
+        .select('slug name images category isHidden district ratingAvg ratingCount'),
       Listing.find({ _id: { $in: idsOf('listing') }, status: 'approved' })
         .populate('district', 'slug name')
-        .select('name type images priceRange district'),
+        .select('name type images priceRange district ratingAvg ratingCount'),
     ]);
 
     // Keep the saved-most-recently-first order from the favorites themselves

@@ -27,7 +27,7 @@ export async function browse(req, res, next) {
     // Photo-first ordering: spots with images lead the grid
     const spots = await Spot.find(filter)
       .populate('district', 'slug name isVerified')
-      .select('slug name category images tags isHidden district')
+      .select('slug name category images tags isHidden district ratingAvg ratingCount')
       .sort({ 'images.0': -1, 'name.bn': 1 })
       .skip((page - 1) * limit)
       .limit(limit + 1);

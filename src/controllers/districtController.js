@@ -29,7 +29,7 @@ export async function getBySlug(req, res, next) {
     const district = await District.findOne({ slug: req.params.slug, isLaunched: true });
     if (!district) throw new AppError('District not found', 404);
     const spots = await Spot.find({ district: district._id, isActive: true })
-      .select('slug name images category location entryCost timeNeededHours isHidden tags')
+      .select('slug name images category location entryCost timeNeededHours isHidden tags ratingAvg ratingCount')
       .sort('name.bn');
     res.json({ success: true, data: { district, spots } });
   } catch (err) {

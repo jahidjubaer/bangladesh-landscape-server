@@ -6,6 +6,8 @@ export const NOTIF_KINDS = [
   'booking-rejected',
   'booking-cancelled', // to guide/partner when traveler cancels
   'review-received', // to guide
+  'review-approved', // to author: spot/listing review published
+  'review-rejected',
   'payment-approved', // to traveler (plan unlocked)
   'payment-rejected',
   'blog-approved', // to author

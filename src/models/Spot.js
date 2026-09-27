@@ -29,6 +29,9 @@ const spotSchema = new mongoose.Schema(
     warnings: [localized],
     tags: [{ type: String, enum: SPOT_TAGS }],
     isActive: { type: Boolean, default: true },
+    // Denormalized from approved reviews — cheap star badges on cards
+    ratingAvg: { type: Number, default: 0 },
+    ratingCount: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

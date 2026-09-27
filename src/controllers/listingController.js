@@ -32,7 +32,7 @@ export async function listByDistrict(req, res, next) {
     if (!district) throw new AppError('District not found', 404);
 
     const listings = await Listing.find({ district: district._id, status: 'approved' })
-      .select('type name description images contactPhone priceRange capacity isBookable status')
+      .select('type name description images contactPhone priceRange capacity isBookable status ratingAvg ratingCount')
       .sort('type name.bn');
     res.json({
       success: true,

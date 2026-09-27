@@ -24,6 +24,9 @@ const listingSchema = new mongoose.Schema(
     },
     status: { type: String, enum: ['pending', 'approved', 'suspended'], default: 'pending', index: true },
     isBookable: { type: Boolean, default: false }, // per-listing switch; district feature flag gates too
+    // Denormalized from approved reviews — cheap star badges on cards
+    ratingAvg: { type: Number, default: 0 },
+    ratingCount: { type: Number, default: 0 },
     blockedDates: [Date], // partner-blocked days + implicit conflicts from confirmed bookings
   },
   { timestamps: true }
