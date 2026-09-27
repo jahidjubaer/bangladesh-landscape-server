@@ -4,6 +4,7 @@ import Setting from '../models/Setting.js';
 import AppError from '../utils/AppError.js';
 import env from '../config/env.js';
 import { initPayment, validateSslPayment, activeGateway, newTranId } from '../services/paymentService.js';
+import { notify } from '../services/notifyService.js';
 
 async function fulfill(payment, gatewayData) {
   if (payment.status === 'success') return; // idempotent — IPN + callback may both fire
@@ -13,11 +14,12 @@ async function fulfill(payment, gatewayData) {
   await payment.save();
 
   if (payment.purpose === 'plan') {
-    await Plan.findByIdAndUpdate(payment.ref, {
+    const plan = await Plan.findByIdAndUpdate(payment.ref, {
       status: 'paid',
       paidAt: new Date(),
       payment: payment._id,
     });
+    if (plan) await notify(payment.user, 'payment-approved', { title: plan.output?.title }, /plans/+plan.publicId);
   }
 }
 
@@ -199,6 +201,13 @@ export async function adminRejectPayment(req, res, next) {
     payment.verifiedBy = req.user._id;
     payment.adminNote = req.body?.note || '';
     await fail(payment, 'failed', { manual: true, rejected: true });
+
+    let link = '/my-plans';
+    if (payment.purpose === 'plan') {
+      const plan = await Plan.findById(payment.ref).select('publicId');
+      if (plan) link = `/plans/${plan.publicId}`;
+    }
+    await notify(payment.user, 'payment-rejected', { note: payment.adminNote }, link);
 
     res.json({ success: true, message: 'Payment rejected' });
   } catch (err) {

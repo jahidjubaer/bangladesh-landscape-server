@@ -4,6 +4,7 @@ import District from '../models/District.js';
 import User from '../models/User.js';
 import AppError from '../utils/AppError.js';
 import { normalizeBdPhone } from '../validators/authValidator.js';
+import { notify } from '../services/notifyService.js';
 
 const LANGS = ['bangla', 'english', 'local'];
 
@@ -178,6 +179,8 @@ export async function approve(req, res, next) {
 
     await User.findByIdAndUpdate(guide.user, { $addToSet: { roles: 'guide' } });
 
+    await notify(guide.user, 'guide-approved', {}, '/guide-dashboard');
+
     res.json({ success: true, message: 'Guide approved' });
   } catch (err) {
     next(err);
@@ -191,6 +194,7 @@ export async function reject(req, res, next) {
     guide.applicationStatus = 'rejected';
     guide.rejectionReason = req.body?.reason || '';
     await guide.save();
+    await notify(guide.user, 'guide-rejected', { note: guide.rejectionReason }, '/guide-dashboard');
     res.json({ success: true, message: 'Application rejected' });
   } catch (err) {
     next(err);

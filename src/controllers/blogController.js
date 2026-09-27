@@ -1,7 +1,8 @@
-﻿import sanitizeHtml from 'sanitize-html';
+import sanitizeHtml from 'sanitize-html';
 import Blog from '../models/Blog.js';
 import District from '../models/District.js';
 import AppError from '../utils/AppError.js';
+import { notify } from '../services/notifyService.js';
 
 const SANITIZE_OPTS = {
   allowedTags: [
@@ -224,6 +225,8 @@ export async function approveBlog(req, res, next) {
       blog.author.roles?.some((r) => ['admin', 'moderator'].includes(r)) || Boolean(blog.author.verifiedAuthor);
     await blog.save();
 
+    await notify(blog.author._id, 'blog-approved', { title: blog.title.bn }, /blog/+blog.slug);
+
     res.json({ success: true, message: 'Blog approved and published' });
   } catch (err) {
     next(err);
@@ -241,6 +244,8 @@ export async function rejectBlog(req, res, next) {
     blog.moderatedAt = new Date();
     blog.moderationNote = req.body?.note || '';
     await blog.save();
+
+    await notify(blog.author, 'blog-rejected', { title: blog.title.bn, note: blog.moderationNote }, '/my-blogs');
 
     res.json({ success: true, message: 'Blog rejected' });
   } catch (err) {

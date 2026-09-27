@@ -4,6 +4,7 @@ import Listing from '../models/Listing.js';
 import Setting from '../models/Setting.js';
 import AppError from '../utils/AppError.js';
 import { isListingBookable } from './listingController.js';
+import { notify } from '../services/notifyService.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const dayCount = (from, to) => Math.max(1, Math.round((to - from) / DAY_MS) + 1);
@@ -68,6 +69,8 @@ export async function createGuideBooking(req, res, next) {
       expiresAt: new Date(Date.now() + settings.bookingConfirmWindowHours * 60 * 60 * 1000),
     });
 
+    await notify(guide.user, 'booking-requested', { name: req.user.name }, '/guide-dashboard');
+
     res.status(201).json({ success: true, message: 'Booking requested', data: { booking } });
   } catch (err) {
     next(err);
@@ -129,6 +132,10 @@ export async function createListingBooking(req, res, next) {
       expiresAt: new Date(Date.now() + settings.bookingConfirmWindowHours * 60 * 60 * 1000),
     });
 
+    if (listing.owner) {
+      await notify(listing.owner, 'booking-requested', { name: req.user.name }, '/partner-dashboard');
+    }
+
     res.status(201).json({ success: true, message: 'Booking requested', data: { booking } });
   } catch (err) {
     next(err);
@@ -179,6 +186,7 @@ export async function partnerConfirm(req, res, next) {
     }
     booking.status = 'confirmed';
     await booking.save();
+    await notify(booking.user, 'booking-confirmed', { name: req.user.name }, '/my-bookings');
     res.json({ success: true, message: 'Booking confirmed' });
   } catch (err) {
     next(err);
@@ -192,6 +200,7 @@ export async function partnerReject(req, res, next) {
     booking.status = 'rejected';
     booking.rejectionReason = req.body?.reason || '';
     await booking.save();
+    await notify(booking.user, 'booking-rejected', { name: req.user.name }, '/my-bookings');
     res.json({ success: true, message: 'Booking rejected' });
   } catch (err) {
     next(err);
@@ -275,6 +284,7 @@ export async function confirmBooking(req, res, next) {
     }
     booking.status = 'confirmed';
     await booking.save();
+    await notify(booking.user, 'booking-confirmed', { name: req.user.name }, '/my-bookings');
     res.json({ success: true, message: 'Booking confirmed' });
   } catch (err) {
     next(err);
@@ -288,6 +298,7 @@ export async function rejectBooking(req, res, next) {
     booking.status = 'rejected';
     booking.rejectionReason = req.body?.reason || '';
     await booking.save();
+    await notify(booking.user, 'booking-rejected', { name: req.user.name }, '/my-bookings');
     res.json({ success: true, message: 'Booking rejected' });
   } catch (err) {
     next(err);
@@ -303,6 +314,16 @@ export async function cancelBooking(req, res, next) {
     }
     booking.status = 'cancelled';
     await booking.save();
+
+    // Tell the other side (guide or partner)
+    if (booking.guide) {
+      const g = await GuideProfile.findById(booking.guide).select('user');
+      await notify(g?.user, 'booking-cancelled', { name: req.user.name }, '/guide-dashboard');
+    } else if (booking.listing) {
+      const l = await Listing.findById(booking.listing).select('owner');
+      await notify(l?.owner, 'booking-cancelled', { name: req.user.name }, '/partner-dashboard');
+    }
+
     res.json({ success: true, message: 'Booking cancelled' });
   } catch (err) {
     next(err);
@@ -335,6 +356,7 @@ export async function reviewBooking(req, res, next) {
       guide.ratingCount += 1;
       guide.ratingAvg = Math.round((total / guide.ratingCount) * 10) / 10;
       await guide.save();
+      await notify(guide.user, 'review-received', { name: req.user.name }, '/guide-dashboard');
     }
 
     res.json({ success: true, message: 'Review submitted' });
