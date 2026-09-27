@@ -4,6 +4,7 @@ import * as spotCtrl from '../controllers/spotController.js';
 import * as adCtrl from '../controllers/adController.js';
 import * as listingCtrl from '../controllers/listingController.js';
 import { publicStats } from '../controllers/statsController.js';
+import { districtWeather } from '../controllers/weatherController.js';
 
 const router = Router();
 
@@ -25,6 +26,7 @@ router.get('/credits', async (_req, res) => {
 router.get('/districts', districtCtrl.listLaunched);
 router.get('/districts/:slug', districtCtrl.getBySlug);
 router.get('/districts/:slug/listings', listingCtrl.listByDistrict);
+router.get('/districts/:slug/weather', districtWeather);
 router.get('/listings/:id', listingCtrl.getPublic);
 router.get('/spots/:slug', spotCtrl.getBySlug);
 router.get('/ads', adCtrl.activeBySlot);
