@@ -27,6 +27,7 @@ router.get('/districts', districtCtrl.listLaunched);
 router.get('/districts/:slug', districtCtrl.getBySlug);
 router.get('/districts/:slug/listings', listingCtrl.listByDistrict);
 router.get('/districts/:slug/weather', districtWeather);
+router.get('/listings', listingCtrl.listAll);
 router.get('/listings/:id', listingCtrl.getPublic);
 router.get('/spots/:slug', spotCtrl.getBySlug);
 router.get('/ads', adCtrl.activeBySlot);

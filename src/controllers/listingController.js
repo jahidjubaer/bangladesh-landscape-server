@@ -1,4 +1,4 @@
-import Listing from '../models/Listing.js';
+import Listing, { LISTING_TYPES } from '../models/Listing.js';
 import District from '../models/District.js';
 import User from '../models/User.js';
 import AppError from '../utils/AppError.js';
@@ -41,6 +41,42 @@ export async function listByDistrict(req, res, next) {
           ...l.toObject(),
           bookable: isListingBookable(l, district),
         })),
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// Public browse across districts: GET /listings?district=slug&type=hotel
+export async function listAll(req, res, next) {
+  try {
+    const filter = { status: 'approved' };
+    if (req.query.type && LISTING_TYPES.includes(req.query.type)) filter.type = req.query.type;
+    if (req.query.district) {
+      const d = await District.findOne({ slug: req.query.district, isLaunched: true }).select('_id');
+      if (!d) return res.json({ success: true, data: { listings: [] } });
+      filter.district = d._id;
+    }
+
+    const listings = await Listing.find(filter)
+      .populate('district', 'slug name isLaunched features')
+      .sort('-isBookable type name.bn')
+      .limit(100);
+
+    res.json({
+      success: true,
+      data: {
+        listings: listings
+          .filter((l) => l.district?.isLaunched)
+          .map((l) => {
+            const obj = l.toObject();
+            const bookable = isListingBookable(l, l.district);
+            obj.district = { slug: l.district.slug, name: l.district.name };
+            delete obj.blockedDates;
+            delete obj.owner;
+            return { ...obj, bookable };
+          }),
       },
     });
   } catch (err) {
