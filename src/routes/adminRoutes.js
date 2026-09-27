@@ -73,9 +73,14 @@ router.patch('/payments/:id/approve', payCtrl.adminApprovePayment);
 router.patch('/payments/:id/reject', payCtrl.adminRejectPayment);
 
 // Image upload → returns a URL usable in district/spot forms
-router.post('/uploads', uploadImage.single('image'), (req, res, next) => {
-  if (!req.file) return next(new AppError('No image file received (field name: image)', 400));
-  res.status(201).json({ success: true, data: { url: `/uploads/${req.file.filename}` } });
+router.post('/uploads', uploadImage.single('image'), async (req, res, next) => {
+  try {
+    if (!req.file) throw new AppError('No image file received (field name: image)', 400);
+    const { storePublicImage } = await import('../services/storageService.js');
+    res.status(201).json({ success: true, data: { url: await storePublicImage(req.file) } });
+  } catch (err) {
+    next(err);
+  }
 });
 
 export default router;

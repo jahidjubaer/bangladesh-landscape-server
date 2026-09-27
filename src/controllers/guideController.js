@@ -94,15 +94,19 @@ export async function apply(req, res, next) {
       languages = arr.map((l) => l.trim()).filter((l) => LANGS.includes(l));
     }
 
+    const { storePrivateDoc } = await import('../services/storageService.js');
+    const nidFile = await storePrivateDoc(req.files.nidFile[0]);
+    const certFile = req.files?.certFile?.[0] ? await storePrivateDoc(req.files.certFile[0]) : '';
+
     const guide = await GuideProfile.create({
       user: user._id,
       application: {
         nidNumber: String(b.nidNumber).trim(),
-        nidFile: req.files.nidFile[0].filename,
+        nidFile,
         address: b.address.trim(),
         facebookUrl: b.facebookUrl || '',
         education: b.education || '',
-        citizenshipCertFile: req.files?.certFile?.[0]?.filename || '',
+        citizenshipCertFile: certFile,
         whatsappNumber: whatsapp,
         experienceSummary: b.experienceSummary || '',
       },

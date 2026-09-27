@@ -123,7 +123,8 @@ export async function changePassword(req, res, next) {
 export async function updateAvatar(req, res, next) {
   try {
     if (!req.file) throw new AppError('No image file received (field name: image)', 400);
-    req.user.avatarUrl = `/uploads/${req.file.filename}`;
+    const { storePublicImage } = await import('../services/storageService.js');
+    req.user.avatarUrl = await storePublicImage(req.file);
     await req.user.save();
     res.json({ success: true, message: 'Avatar updated', data: { avatarUrl: req.user.avatarUrl } });
   } catch (err) {

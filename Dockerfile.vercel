@@ -1,0 +1,24 @@
+# Vercel container function: Chromium + Bangla fonts for plan PDFs.
+# Vercel routes traffic to port 80; runtime uploads go to Vercel Blob
+# (BLOB_READ_WRITE_TOKEN), seed photos ship inside the image.
+FROM node:22-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    chromium \
+    fonts-noto-core \
+    fonts-noto-color-emoji \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV NODE_ENV=production \
+    CHROME_PATH=/usr/bin/chromium \
+    PORT=80
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci --omit=dev
+
+COPY . .
+
+EXPOSE 80
+CMD ["node", "src/index.js"]

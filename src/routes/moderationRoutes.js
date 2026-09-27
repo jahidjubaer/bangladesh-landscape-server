@@ -26,12 +26,30 @@ router.get('/blogs/:id', blogCtrl.moderationGet);
 router.patch('/blogs/:id/approve', blogCtrl.approveBlog);
 router.patch('/blogs/:id/reject', blogCtrl.rejectBlog);
 
-// Private identity documents (NID, নাগরিক সনদপত্র) — never on a public URL
-router.get('/files/:filename', (req, res, next) => {
-  const filename = path.basename(req.params.filename); // prevent traversal
-  const filePath = path.join(PRIVATE_DIR, filename);
-  if (!fs.existsSync(filePath)) return next(new AppError('File not found', 404));
-  res.sendFile(filePath);
+// Private identity documents (NID, নাগরিক সনদপত্র) — never on a public URL.
+// Stored value is a local filename (dev) or a Vercel Blob URL (stateless
+// hosting); Blob docs are streamed through this guarded route.
+router.get('/files/:name', async (req, res, next) => {
+  try {
+    const raw = decodeURIComponent(req.params.name);
+
+    if (/^https:\/\//.test(raw)) {
+      if (!/\.blob\.vercel-storage\.com\//.test(raw)) throw new AppError('File not found', 404);
+      const upstream = await fetch(raw);
+      if (!upstream.ok) throw new AppError('File not found', 404);
+      res.set('Content-Type', upstream.headers.get('content-type') || 'application/octet-stream');
+      const { Readable } = await import('stream');
+      Readable.fromWeb(upstream.body).pipe(res);
+      return;
+    }
+
+    const filename = path.basename(raw); // prevent traversal
+    const filePath = path.join(PRIVATE_DIR, filename);
+    if (!fs.existsSync(filePath)) throw new AppError('File not found', 404);
+    res.sendFile(filePath);
+  } catch (err) {
+    next(err);
+  }
 });
 
 export default router;

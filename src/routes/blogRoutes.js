@@ -26,9 +26,14 @@ router.patch('/:id', requireAuth, blogCtrl.update);
 router.delete('/:id', requireAuth, blogCtrl.remove);
 
 // Author image upload (cover/inline) — public storage, auth required
-router.post('/uploads', requireAuth, submitLimiter, uploadImage.single('image'), (req, res, next) => {
-  if (!req.file) return next(new AppError('No image file received (field name: image)', 400));
-  res.status(201).json({ success: true, data: { url: `/uploads/${req.file.filename}` } });
+router.post('/uploads', requireAuth, submitLimiter, uploadImage.single('image'), async (req, res, next) => {
+  try {
+    if (!req.file) throw new AppError('No image file received (field name: image)', 400);
+    const { storePublicImage } = await import('../services/storageService.js');
+    res.status(201).json({ success: true, data: { url: await storePublicImage(req.file) } });
+  } catch (err) {
+    next(err);
+  }
 });
 
 router.get('/:slug', blogCtrl.getBySlug);
