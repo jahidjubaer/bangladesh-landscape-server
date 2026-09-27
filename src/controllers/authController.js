@@ -72,6 +72,7 @@ export async function logout(_req, res) {
 
 export async function me(req, res, next) {
   try {
+    if (!req.user) return res.json({ success: true, data: { user: null } });
     if (!req.user.referralCode) await req.user.ensureReferralCode(); // pre-feature accounts
     res.json({ success: true, data: { user: req.user.toSafeJSON() } });
   } catch (err) {
