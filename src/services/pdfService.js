@@ -112,7 +112,12 @@ export async function renderPlanPdf(plan, district, userName) {
     throw new Error('Chrome not found for PDF rendering. Set CHROME_PATH in .env');
   }
   const { default: puppeteer } = await import('puppeteer-core');
-  const browser = await puppeteer.launch({ executablePath: chromePath, headless: true });
+  const browser = await puppeteer.launch({
+    executablePath: chromePath,
+    headless: true,
+    // Required inside containers (Render/Docker run as root without a sandbox user)
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
   try {
     const page = await browser.newPage();
     await page.setContent(planHtml(plan, district, userName), { waitUntil: 'networkidle0', timeout: 60000 });

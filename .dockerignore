@@ -1,0 +1,9 @@
+node_modules
+.env
+.env.*
+uploads/plans
+private-uploads
+*.log
+render.yaml
+Dockerfile
+.dockerignore

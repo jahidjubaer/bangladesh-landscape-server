@@ -2,7 +2,9 @@ node_modules/
 dist/
 .env
 .env.local
-uploads/
+# Seed photos ship with the repo (Render free disk is ephemeral);
+# generated PDFs and private NID documents never do
+uploads/plans/
 private-uploads/
 *.log
 .DS_Store

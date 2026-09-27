@@ -6,7 +6,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
-    "seed": "node src/seed/seed.js"
+    "seed": "node src/seed/seed.js",
+    "seed:full": "node src/seed/seed.js && node src/seed/expandSunamganj.js && node src/seed/seedAllDistricts.js && node src/seed/enrich-part1.js && node src/seed/enrich-part2.js && node src/seed/enrich-part3.js && node src/seed/applyPhotos.js"
   },
   "keywords": [],
   "author": "",

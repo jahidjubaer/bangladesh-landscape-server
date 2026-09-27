@@ -24,6 +24,10 @@ import { notFound, errorHandler } from './middlewares/errorHandler.js';
 
 const app = express();
 
+// Behind Render/other reverse proxies: real client IPs for rate limiting,
+// X-Forwarded-Proto respected for secure cookies
+app.set('trust proxy', 1);
+
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } })); // allow images from :5173
 app.use(compression());
 app.use(cors({ origin: env.clientUrl, credentials: true }));
