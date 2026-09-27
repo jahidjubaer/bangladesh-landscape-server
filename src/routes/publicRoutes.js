@@ -33,6 +33,7 @@ router.get('/districts/:slug/listings', listingCtrl.listByDistrict);
 router.get('/districts/:slug/weather', districtWeather);
 router.get('/listings', listingCtrl.listAll);
 router.get('/listings/:id', listingCtrl.getPublic);
+router.get('/spots', spotCtrl.browse);
 router.get('/spots/:slug', spotCtrl.getBySlug);
 router.get('/ads', adCtrl.activeBySlot);
 router.get('/ads/:id/click', adCtrl.click);
