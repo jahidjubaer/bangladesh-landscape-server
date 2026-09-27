@@ -7,9 +7,11 @@ import { publicStats } from '../controllers/statsController.js';
 import { districtWeather } from '../controllers/weatherController.js';
 import { gallery } from '../controllers/galleryController.js';
 import { globalSearch } from '../controllers/searchController.js';
+import { track } from '../controllers/trackController.js';
 
 const router = Router();
 
+router.post('/track', track);
 router.get('/stats', publicStats);
 router.get('/gallery', gallery);
 router.get('/search', globalSearch);

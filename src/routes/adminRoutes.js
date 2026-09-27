@@ -8,6 +8,7 @@ import * as payCtrl from '../controllers/paymentController.js';
 import * as adCtrl from '../controllers/adController.js';
 import * as listingCtrl from '../controllers/listingController.js';
 import * as userAdminCtrl from '../controllers/userAdminController.js';
+import { analytics } from '../controllers/analyticsController.js';
 import * as eventCtrl from '../controllers/eventController.js';
 import AppError from '../utils/AppError.js';
 
@@ -17,6 +18,7 @@ router.use(requireAuth, requireRole('admin'));
 
 // Operations overview
 router.get('/overview', userAdminCtrl.overview);
+router.get('/analytics', analytics);
 
 // User management
 router.get('/users', userAdminCtrl.listUsers);
