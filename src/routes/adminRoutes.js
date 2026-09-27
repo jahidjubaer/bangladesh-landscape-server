@@ -8,6 +8,7 @@ import * as payCtrl from '../controllers/paymentController.js';
 import * as adCtrl from '../controllers/adController.js';
 import * as listingCtrl from '../controllers/listingController.js';
 import * as userAdminCtrl from '../controllers/userAdminController.js';
+import * as eventCtrl from '../controllers/eventController.js';
 import AppError from '../utils/AppError.js';
 
 const router = Router();
@@ -54,6 +55,15 @@ router.get('/listings/:id', listingCtrl.adminGet);
 router.patch('/listings/:id', listingCtrl.adminUpdate);
 router.patch('/listings/:id/owner', listingCtrl.adminAssignOwner);
 router.delete('/listings/:id', listingCtrl.adminDelete);
+
+// Group tour events
+router.get('/events', eventCtrl.adminList);
+router.post('/events', eventCtrl.adminCreate);
+router.get('/events/:id', eventCtrl.adminGet);
+router.patch('/events/:id', eventCtrl.adminUpdate);
+router.delete('/events/:id', eventCtrl.adminDelete);
+router.get('/event-bookings', eventCtrl.adminBookings);
+router.patch('/event-bookings/:id/:action', eventCtrl.adminDecideBooking);
 
 // Manual payment verification
 router.get('/payments', payCtrl.adminListPayments);

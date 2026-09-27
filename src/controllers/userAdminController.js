@@ -4,6 +4,7 @@ import Payment from '../models/Payment.js';
 import Booking from '../models/Booking.js';
 import Blog from '../models/Blog.js';
 import GuideProfile from '../models/GuideProfile.js';
+import EventBooking from '../models/EventBooking.js';
 import AppError from '../utils/AppError.js';
 
 // ---------- Users ----------
@@ -90,6 +91,7 @@ export async function overview(_req, res, next) {
   try {
     const [
       pendingPayments,
+      pendingEventBookings,
       pendingGuideApps,
       pendingBlogs,
       totalUsers,
@@ -100,6 +102,7 @@ export async function overview(_req, res, next) {
       recentPendingPayments,
     ] = await Promise.all([
       Payment.countDocuments({ status: 'pending-verification' }),
+      EventBooking.countDocuments({ status: 'requested' }),
       GuideProfile.countDocuments({ applicationStatus: { $in: ['pending', 'screened'] } }),
       Blog.countDocuments({ status: 'pending' }),
       User.countDocuments(),
@@ -116,7 +119,7 @@ export async function overview(_req, res, next) {
     res.json({
       success: true,
       data: {
-        actionNeeded: { pendingPayments, pendingGuideApps, pendingBlogs },
+        actionNeeded: { pendingPayments, pendingGuideApps, pendingBlogs, pendingEventBookings },
         totals: {
           users: totalUsers,
           plans: totalPlans,

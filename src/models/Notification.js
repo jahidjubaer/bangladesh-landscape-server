@@ -13,6 +13,8 @@ export const NOTIF_KINDS = [
   'guide-approved', // to applicant
   'guide-rejected',
   'referral-joined', // to referrer: someone joined with their code
+  'event-confirmed', // to traveler: group tour seat confirmed
+  'event-rejected',
 ];
 
 // Messages are rendered client-side from `kind` + `data` (bilingual UI),
