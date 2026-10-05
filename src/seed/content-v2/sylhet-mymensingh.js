@@ -224,7 +224,7 @@ export default [
       {
         slug: 'hakaluki-haor',
         descEn:
-          'One of the country’s largest haors — a Ramsar-listed wetland alive with hundreds of thousands of migratory birds in winter.',
+          'One of the country’s largest haors — a protected Ecologically Critical Area alive with hundreds of thousands of migratory birds in winter.',
         howEn: 'Go to a ghat from Barlekha or Kulaura, then hire a boat.',
         bestTime: { bn: 'শীত (ডিসেম্বর–ফেব্রুয়ারি) পরিযায়ী পাখির জন্য; বর্ষায় হাওর পূর্ণ', en: 'Winter (December–February) for migratory birds; monsoon for the full haor' },
         entry: [0, 0],

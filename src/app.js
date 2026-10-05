@@ -19,6 +19,7 @@ import eventRoutes from './routes/eventRoutes.js';
 import blogRoutes from './routes/blogRoutes.js';
 import favoriteRoutes from './routes/favoriteRoutes.js';
 import reviewRoutes from './routes/reviewRoutes.js';
+import toolRoutes from './routes/toolRoutes.js';
 import sitemapRoutes from './routes/sitemapRoutes.js';
 import { UPLOAD_DIR } from './middlewares/upload.js';
 import { notFound, errorHandler } from './middlewares/errorHandler.js';
@@ -66,6 +67,7 @@ app.use('/api/v1/events', eventRoutes);
 app.use('/api/v1/blogs', blogRoutes);
 app.use('/api/v1/favorites', favoriteRoutes);
 app.use('/api/v1/reviews', reviewRoutes);
+app.use('/api/v1/tools', toolRoutes);
 app.use('/', sitemapRoutes);
 
 app.use(notFound);
