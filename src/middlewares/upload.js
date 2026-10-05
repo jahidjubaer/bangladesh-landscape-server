@@ -6,11 +6,21 @@ import AppError from '../utils/AppError.js';
 // Files land in memory; services/storageService.js decides where they live
 // (Vercel Blob on stateless hosting, local disk in dev). Callers only consume
 // the returned URL.
+// Serverless hosts (Vercel functions) have a read-only bundle, so creating a
+// folder there must never crash the boot — uploads go to Blob in that case.
+export function ensureDir(dir) {
+  try {
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  } catch (err) {
+    console.warn(`Cannot create ${dir} (${err.code}); local disk storage disabled`);
+  }
+}
+
 export const UPLOAD_DIR = path.resolve('uploads');
-if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+ensureDir(UPLOAD_DIR);
 
 export const PRIVATE_DIR = path.resolve('private-uploads');
-if (!fs.existsSync(PRIVATE_DIR)) fs.mkdirSync(PRIVATE_DIR, { recursive: true });
+ensureDir(PRIVATE_DIR);
 
 const ALLOWED = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp' };
 

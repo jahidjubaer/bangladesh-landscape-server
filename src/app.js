@@ -4,6 +4,7 @@ import cors from 'cors';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import env from './config/env.js';
+import { connectDB } from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
 import publicRoutes from './routes/publicRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
@@ -39,6 +40,16 @@ app.use('/uploads', express.static(UPLOAD_DIR, { maxAge: '7d' }));
 
 app.get('/api/v1/health', (_req, res) => {
   res.json({ success: true, message: 'Bangladesh Landscape API is running', time: new Date().toISOString() });
+});
+
+// Serverless cold starts: make sure Mongo is connected before any handler runs
+app.use(async (_req, _res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    next(err);
+  }
 });
 
 app.use('/api/v1/auth', authRoutes);

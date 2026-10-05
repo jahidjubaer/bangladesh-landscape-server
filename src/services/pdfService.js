@@ -1,8 +1,12 @@
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
+import { ensureDir } from '../middlewares/upload.js';
 
-const PDF_DIR = path.resolve('uploads', 'plans');
-if (!fs.existsSync(PDF_DIR)) fs.mkdirSync(PDF_DIR, { recursive: true });
+// Vercel functions can only write to /tmp (per-instance cache, re-rendered on a cold start)
+const onVercel = Boolean(process.env.VERCEL);
+const PDF_DIR = onVercel ? path.join(os.tmpdir(), 'plans') : path.resolve('uploads', 'plans');
+ensureDir(PDF_DIR);
 
 const CHROME_PATHS = [
   process.env.CHROME_PATH,
@@ -106,18 +110,27 @@ ${o.tips?.length ? `<h2>💡 টিপস</h2><ul>${list(o.tips)}</ul>` : ''}
 </body></html>`;
 }
 
-export async function renderPlanPdf(plan, district, userName) {
+// Vercel functions ship no browser: @sparticuz/chromium unpacks a Lambda-ready build into /tmp
+async function launchOptions() {
+  if (onVercel) {
+    const { default: chromium } = await import('@sparticuz/chromium');
+    return { executablePath: await chromium.executablePath(), args: chromium.args, headless: true };
+  }
   const chromePath = findChrome();
   if (!chromePath) {
     throw new Error('Chrome not found for PDF rendering. Set CHROME_PATH in .env');
   }
-  const { default: puppeteer } = await import('puppeteer-core');
-  const browser = await puppeteer.launch({
+  return {
     executablePath: chromePath,
     headless: true,
     // Required inside containers (Render/Docker run as root without a sandbox user)
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-  });
+  };
+}
+
+export async function renderPlanPdf(plan, district, userName) {
+  const { default: puppeteer } = await import('puppeteer-core');
+  const browser = await puppeteer.launch(await launchOptions());
   try {
     const page = await browser.newPage();
     await page.setContent(planHtml(plan, district, userName), { waitUntil: 'networkidle0', timeout: 60000 });

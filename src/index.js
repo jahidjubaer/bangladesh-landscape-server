@@ -2,6 +2,10 @@ import app from './app.js';
 import env from './config/env.js';
 import { connectDB } from './config/db.js';
 
+// Vercel imports the default export as a serverless handler (no listen);
+// app.js awaits the shared DB connection per request.
+export default app;
+
 async function start() {
   try {
     await connectDB();
@@ -14,4 +18,4 @@ async function start() {
   }
 }
 
-start();
+if (!process.env.VERCEL) start();

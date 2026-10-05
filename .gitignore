@@ -9,3 +9,7 @@ private-uploads/
 *.log
 .DS_Store
 Thumbs.db
+.vercel
+
+.vercel
+.env*
