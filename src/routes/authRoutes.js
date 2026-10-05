@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
-import { register, login, logout, me, updateMe, changePassword, updateAvatar } from '../controllers/authController.js';
+import {
+  register, login, logout, me, updateMe, updateVisitedDistricts, changePassword, updateAvatar,
+} from '../controllers/authController.js';
 import { requireAuth, optionalAuth } from '../middlewares/auth.js';
 import { uploadImage } from '../middlewares/upload.js';
 
@@ -20,6 +22,7 @@ router.post('/logout', logout);
 // optionalAuth: anonymous visitors get 200 {user:null} instead of console-noise 401s
 router.get('/me', optionalAuth, me);
 router.patch('/me', requireAuth, updateMe);
+router.put('/me/visited-districts', requireAuth, updateVisitedDistricts);
 router.post('/change-password', requireAuth, authLimiter, changePassword);
 router.post('/avatar', requireAuth, uploadImage.single('image'), updateAvatar);
 

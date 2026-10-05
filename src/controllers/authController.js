@@ -1,4 +1,5 @@
 import User from '../models/User.js';
+import District from '../models/District.js';
 import AppError from '../utils/AppError.js';
 import { signToken, cookieOptions, COOKIE_NAME } from '../utils/token.js';
 import { validateRegister, validateLogin } from '../validators/authValidator.js';
@@ -95,6 +96,22 @@ export async function updateMe(req, res, next) {
     }
     await req.user.save();
     res.json({ success: true, message: 'Profile updated', data: { user: req.user.toSafeJSON() } });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// PUT /auth/me/visited-districts { slugs: [...] } — replaces the user's visited map
+export async function updateVisitedDistricts(req, res, next) {
+  try {
+    const { slugs } = req.body || {};
+    if (!Array.isArray(slugs) || slugs.length > 64 || !slugs.every((s) => typeof s === 'string')) {
+      throw new AppError('slugs must be a list of district slugs', 400);
+    }
+    const valid = await District.find({ slug: { $in: slugs } }).distinct('slug');
+    req.user.visitedDistricts = valid;
+    await req.user.save();
+    res.json({ success: true, data: { visitedDistricts: req.user.visitedDistricts } });
   } catch (err) {
     next(err);
   }

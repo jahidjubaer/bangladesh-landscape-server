@@ -19,6 +19,8 @@ const userSchema = new mongoose.Schema(
     referredBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     referralCount: { type: Number, default: 0 },
     status: { type: String, enum: ['active', 'suspended'], default: 'active' },
+    // "My Bangladesh Map" — district slugs the user has visited
+    visitedDistricts: { type: [String], default: [] },
   },
   { timestamps: true }
 );
@@ -63,6 +65,7 @@ userSchema.methods.toSafeJSON = function () {
     referralCode: this.referralCode || null,
     referralCount: this.referralCount || 0,
     status: this.status,
+    visitedDistricts: this.visitedDistricts || [],
     createdAt: this.createdAt,
   };
 };

@@ -4,6 +4,7 @@ const localized = { bn: { type: String, default: '' }, en: { type: String, defau
 
 export const SPOT_CATEGORIES = ['haor', 'hill', 'river', 'waterfall', 'garden', 'heritage', 'other'];
 export const SPOT_TAGS = ['adventure', 'family', 'relaxed'];
+export const SPOT_FACILITIES = ['toilet', 'food', 'parking', 'shop', 'lodging', 'boat', 'guide', 'prayer', 'ticket', 'wheelchair'];
 
 const spotSchema = new mongoose.Schema(
   {
@@ -28,6 +29,12 @@ const spotSchema = new mongoose.Schema(
     obstacles: [localized],
     warnings: [localized],
     tags: [{ type: String, enum: SPOT_TAGS }],
+    // Long-form page content (content-v3)
+    about: localized, // 2–3 paragraphs separated by blank lines
+    highlights: [localized],
+    tips: [localized],
+    nearbyFood: localized,
+    facilities: [{ type: String, enum: SPOT_FACILITIES }],
     isActive: { type: Boolean, default: true },
     // Denormalized from approved reviews — cheap star badges on cards
     ratingAvg: { type: Number, default: 0 },
