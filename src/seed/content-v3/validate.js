@@ -6,7 +6,7 @@ import { loadSpots, validate } from './schema.js';
 const args = process.argv.slice(2);
 const expectAt = args.indexOf('--expect');
 const expected = expectAt >= 0 ? JSON.parse(fs.readFileSync(args[expectAt + 1], 'utf8')).map((s) => s.slug) : null;
-const only = args.find((a, i) => a.endsWith('.js') && i !== expectAt + 1);
+const only = args.find((a, i) => a.endsWith('.js') && (expectAt < 0 || i !== expectAt + 1));
 
 const { errors, count } = validate(await loadSpots(only), expected);
 console.log(`Spots: ${count}`);

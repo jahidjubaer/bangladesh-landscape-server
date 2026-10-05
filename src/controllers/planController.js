@@ -8,7 +8,9 @@ import path from 'path';
 import fs from 'fs';
 
 function validateInput(body) {
-  const { district, spots, members, days, nights, budget, foodPref, exploreStyle, stayPref, startDate } = body || {};
+  const {
+    district, spots, members, days, nights, budget, foodPref, exploreStyle, stayPref, startDate, origin, transportPref,
+  } = body || {};
   if (!district) throw new AppError('District is required', 400);
   if (!Array.isArray(spots) || spots.length === 0) throw new AppError('Select at least one spot', 400);
   const m = Number(members), d = Number(days), n = Number(nights), b = Number(budget);
@@ -19,7 +21,15 @@ function validateInput(body) {
   if (!['local', 'special', 'regular'].includes(foodPref)) throw new AppError('Invalid food preference', 400);
   if (!['adventure', 'relaxed', 'family', 'other'].includes(exploreStyle)) throw new AppError('Invalid explore style', 400);
   if (!['houseboat', 'cottage', 'hotel', 'resort', 'any'].includes(stayPref)) throw new AppError('Invalid stay preference', 400);
-  return { district, spots, members: m, days: d, nights: n, budget: b, foodPref, exploreStyle, stayPref, startDate: startDate ? new Date(startDate) : undefined };
+  if (origin !== undefined && origin !== null && !/^[a-f0-9]{24}$/i.test(String(origin))) throw new AppError('Invalid starting point', 400);
+  const pref = transportPref || 'any';
+  if (!['any', 'bus', 'train', 'launch', 'air'].includes(pref)) throw new AppError('Invalid transport preference', 400);
+  return {
+    district, spots, members: m, days: d, nights: n, budget: b, foodPref, exploreStyle, stayPref,
+    startDate: startDate ? new Date(startDate) : undefined,
+    origin: origin || undefined,
+    transportPref: pref,
+  };
 }
 
 // Preview shape for unpaid viewers: summary + day 1 only
@@ -42,6 +52,7 @@ function toPublicJSON(plan, { full }) {
           totalDays: o.days?.length || 0,
           mapPoints: o.mapPoints,
           totalCostEstimate: o.totalCostEstimate,
+          journey: o.journey, // the route itself is a free teaser
         },
   };
 }
@@ -71,7 +82,8 @@ export async function getByPublicId(req, res, next) {
   try {
     const plan = await Plan.findOne({ publicId: req.params.publicId })
       .populate('district', 'slug name mapCenter zoom')
-      .populate('input.spots', 'slug name');
+      .populate('input.spots', 'slug name')
+      .populate('input.origin', 'slug name');
     if (!plan) throw new AppError('Plan not found', 404);
 
     const isOwner = req.user && plan.user.toString() === req.user._id.toString();

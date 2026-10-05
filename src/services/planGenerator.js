@@ -3,6 +3,7 @@ import District from '../models/District.js';
 import Spot from '../models/Spot.js';
 import Setting from '../models/Setting.js';
 import AppError from '../utils/AppError.js';
+import { buildJourney } from './routeService.js';
 
 const PLAN_MODEL = process.env.PLAN_MODEL || 'claude-opus-5';
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
@@ -41,6 +42,16 @@ function buildPrompt(district, spots, input, lang) {
       emergency: district.emergency,
     },
     selectedSpots: spots.map(spotFacts),
+    // Computed route (approximate fares per person, BDT) — use it for all transport text and costs
+    journey: input.journey && {
+      startFrom: input.journey.from?.name || null,
+      intercityOptions: input.journey.options.map((o) => ({ mode: o.mode, hours: o.hours, farePerPerson: o.fare })),
+      chosenMode: input.journey.chosenMode,
+      legs: input.journey.legs.map((l) => ({
+        kind: l.kind, mode: l.mode, from: l.from.name, to: l.to.name, km: l.km, hours: l.hours, groupCostBDT: l.groupCost,
+      })),
+      totalTransportCostBDT: input.journey.totalTransportCost,
+    },
   };
 
   const request = {
@@ -69,7 +80,7 @@ ${JSON.stringify(facts, null, 1)}
 USER_REQUEST:
 ${JSON.stringify(request, null, 1)}
 
-কাজ: এই ইউজারের জন্য ${request.days} দিন ${request.nights} রাতের একটি বাস্তবসম্মত ট্যুর প্ল্যান বানাও। startDate থেকে ঋতু বুঝে পরিকল্পনা সাজাও (বর্ষা/শীত অনুযায়ী)। বাজেট মোট ${request.totalBudgetBDT} টাকা (${request.members} জনের জন্য) — যদি বাজেটে সব স্পট কভার করা অসম্ভব হয়, budgetVerdict-এ সততার সাথে বলো এবং প্ল্যান সেই অনুযায়ী ছোট করো। কাছাকাছি স্পটগুলো একই দিনে রাখো (lat/lng দেখে)। isHidden স্পটগুলো hiddenPlaces-এও উল্লেখ করো।
+কাজ: এই ইউজারের জন্য ${request.days} দিন ${request.nights} রাতের একটি বাস্তবসম্মত ট্যুর প্ল্যান বানাও। startDate থেকে ঋতু বুঝে পরিকল্পনা সাজাও (বর্ষা/শীত অনুযায়ী)। বাজেট মোট ${request.totalBudgetBDT} টাকা (${request.members} জনের জন্য) — যদি বাজেটে সব স্পট কভার করা অসম্ভব হয়, budgetVerdict-এ সততার সাথে বলো এবং প্ল্যান সেই অনুযায়ী ছোট করো। কাছাকাছি স্পটগুলো একই দিনে রাখো (lat/lng দেখে)। isHidden স্পটগুলো hiddenPlaces-এও উল্লেখ করো। VERIFIED_FACTS.journey থাকলে প্রথম দিনে যাত্রা (startFrom থেকে) আর শেষ দিনে ফিরতি যাত্রা রাখো, প্রতিদিনের transport ঘরে journey.legs অনুযায়ী বাহন ও খরচ লেখো, এবং costBreakdown-এ যাতায়াত খরচ totalTransportCostBDT ব্যবহার করো।
 
 শুধুমাত্র নিচের কাঠামোর একটি JSON অবজেক্ট আউটপুট দাও — কোনো markdown, ব্যাখ্যা বা কোড ফেন্স নয়। সব টেক্সট বাংলায়:
 {
@@ -116,8 +127,25 @@ async function generateWithClaude(district, spots, input, lang) {
 }
 
 // Free-tier provider (Google AI Studio). JSON mode via responseMimeType.
+// Google retires model versions for new keys, so walk a chain ending in the
+// stable '-latest' aliases before giving up.
+const GEMINI_CHAIN = [...new Set([GEMINI_MODEL, 'gemini-flash-latest', 'gemini-flash-lite-latest'])];
+
 async function generateWithGemini(district, spots, input, lang) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${process.env.GEMINI_API_KEY}`;
+  let lastErr;
+  for (const model of GEMINI_CHAIN) {
+    try {
+      return await callGemini(model, district, spots, input, lang);
+    } catch (err) {
+      lastErr = err;
+      if (!/ (404|429|500|503):/.test(err.message)) throw err; // only retry unavailable/overloaded models
+    }
+  }
+  throw lastErr;
+}
+
+async function callGemini(model, district, spots, input, lang) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -133,7 +161,7 @@ async function generateWithGemini(district, spots, input, lang) {
   const data = await res.json();
   const text = data.candidates?.[0]?.content?.parts?.map((p) => p.text).join('') || '';
   if (!text) throw new AppError('Gemini returned an empty response', 502);
-  return { output: parsePlanJSON(text), model: GEMINI_MODEL };
+  return { output: parsePlanJSON(text), model };
 }
 
 // Deterministic fallback when no AI API key is configured (dev mode).
@@ -141,17 +169,36 @@ async function generateWithGemini(district, spots, input, lang) {
 function generateMock(district, spots, input, _lang) {
   const perDay = Math.max(1, Math.ceil(spots.length / input.days));
   const days = [];
-  const transportBase = 900 * input.members; // rough Dhaka→district bus per head from facts
-  for (let d = 0; d < input.days; d++) {
+  const journey = input.journey;
+  const transportBase = journey.totalTransportCost;
+  const legText = (l) =>
+    `${l.from.name} → ${l.to.name}: ${l.modeLabel}, ~${l.km} কিমি, ~${l.hours} ঘণ্টা` +
+    (l.costPerPerson ? `, জনপ্রতি ${l.costPerPerson.min}–${l.costPerPerson.max} টাকা` : l.groupCost ? `, দলের খরচ ~${l.groupCost} টাকা` : '');
+  const mainLeg = journey.legs.find((l) => l.kind === 'main');
+  const returnLeg = journey.legs.find((l) => l.kind === 'return');
+  const localLegs = journey.legs.filter((l) => l.kind === 'local');
+  // Visit spots in the route's nearest-first order so each day's legs connect
+  const key = (p) => `${p.lat},${p.lng}`;
+  const rank = new Map(localLegs.map((l, i) => [key(l.to), i]));
+  spots = [...spots].sort(
+    (a, b) => (rank.get(key(a.location || {})) ?? 999) - (rank.get(key(b.location || {})) ?? 999)
+  );
+  const dayCount = Math.min(input.days, Math.max(1, Math.ceil(spots.length / perDay)));
+  for (let d = 0; d < dayCount; d++) {
     const daySpots = spots.slice(d * perDay, (d + 1) * perDay);
-    if (daySpots.length === 0 && d > 0) break;
+    const here = new Set(daySpots.filter((s) => s.location?.lat != null).map((s) => `${s.location.lat},${s.location.lng}`));
+    const legs = [
+      ...(d === 0 && mainLeg ? [mainLeg] : []),
+      ...localLegs.filter((l) => here.has(`${l.to.lat},${l.to.lng}`)),
+      ...(d === dayCount - 1 && returnLeg ? [returnLeg] : []),
+    ];
     days.push({
       dayNumber: d + 1,
       title: daySpots.length ? daySpots.map((s) => s.name.bn).join(', ') : 'বিশ্রাম ও স্থানীয় ঘোরাঘুরি',
       activities: daySpots.map((s) => `${s.name.bn} — ${s.howToGo?.bn || ''}`.trim()),
       meals: district.foodInfo?.bn || 'স্থানীয় হোটেলে খাবার',
       stay: STAY_LABELS[input.stayPref],
-      transport: district.transportInfo?.bn?.slice(0, 200) || '',
+      transport: legs.length ? legs.map(legText).join(' | ') : district.transportInfo?.bn?.slice(0, 200) || '',
       costEstimate: Math.round((input.budget - transportBase) / input.days),
     });
   }
@@ -168,7 +215,7 @@ function generateMock(district, spots, input, _lang) {
       .filter((s) => s.location?.lat != null)
       .map((s, i) => ({ name: s.name.bn, lat: s.location.lat, lng: s.location.lng, order: i + 1 })),
     costBreakdown: [
-      { item: `যাতায়াত (আনুমানিক, ${input.members} জন)`, amount: transportBase },
+      { item: `যাতায়াত — আসা-যাওয়া ও লোকাল (আনুমানিক, ${input.members} জন)`, amount: transportBase },
       { item: 'প্রবেশ ফি (মোট)', amount: entryTotal },
       { item: 'খাবার ও থাকা (আনুমানিক)', amount: Math.max(0, input.budget - transportBase - entryTotal) },
     ],
@@ -187,6 +234,13 @@ export async function generatePlan(input, lang) {
   const spots = await Spot.find({ _id: { $in: input.spots }, district: district._id, isActive: true });
   if (spots.length === 0) throw new AppError('Select at least one valid spot', 400);
 
+  const origin = input.origin ? await District.findById(input.origin) : null;
+  if (input.origin && !origin) throw new AppError('Starting district not found', 404);
+  const journey = buildJourney({
+    origin, destination: district, spots, members: input.members, pref: input.transportPref, lang,
+  });
+  input = { ...input, journey, originName: origin ? origin.name : null };
+
   const settings = await Setting.get();
   // Provider priority: free Gemini tier first, Claude if configured, else mock
   const generator = process.env.GEMINI_API_KEY
@@ -194,7 +248,17 @@ export async function generatePlan(input, lang) {
     : process.env.ANTHROPIC_API_KEY
       ? generateWithClaude
       : generateMock;
-  const { output, model } = await generator(district, spots, input, lang);
+  let result;
+  try {
+    result = await generator(district, spots, input, lang);
+  } catch (err) {
+    // Never leave the traveller without a plan: fall back to the deterministic builder
+    if (generator === generateMock) throw err;
+    console.error('AI plan generation failed, using built-in planner:', err.message.slice(0, 200));
+    result = generateMock(district, spots, input, lang);
+  }
+  const { output, model } = result;
+  output.journey = journey; // always the computed route, never model-invented
 
   return {
     district,

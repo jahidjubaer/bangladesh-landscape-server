@@ -88,6 +88,17 @@ export function planHtml(plan, district, userName) {
 ${o.budgetVerdict ? `<div class="verdict"><strong>বাজেট মূল্যায়ন:</strong> ${esc(o.budgetVerdict)}</div>` : ''}
 <h2>🗺️ রুট ম্যাপ</h2>
 ${mapSvg(o.mapPoints)}
+${o.journey?.legs?.length ? `<h2>🧭 যাত্রাপথ ও যাতায়াত</h2>
+<table><tr><th>রুট</th><th>বাহন</th><th>দূরত্ব/সময়</th><th>খরচ</th></tr>
+${o.journey.legs
+  .map(
+    (l) => `<tr><td>${esc(l.from.name)} → ${esc(l.to.name)}</td><td>${esc(l.modeLabel)}</td><td>~${l.km} কিমি · ~${l.hours} ঘণ্টা</td><td>${
+      l.costPerPerson ? `জনপ্রতি ${money(l.costPerPerson.min)}–${money(l.costPerPerson.max)}` : l.groupCost ? `দল ~${money(l.groupCost)}` : '—'
+    }</td></tr>`
+  )
+  .join('')}
+<tr><th colspan="3">মোট যাতায়াত (আনুমানিক)</th><th>${money(o.journey.totalTransportCost)}</th></tr></table>
+<p style="font-size:11px;color:#6b7280">${esc(o.journey.note)}</p>` : ''}
 <h2>📅 দিনভিত্তিক পরিকল্পনা</h2>
 ${(o.days || [])
   .map(

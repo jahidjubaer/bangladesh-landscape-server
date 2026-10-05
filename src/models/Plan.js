@@ -20,6 +20,8 @@ const planSchema = new mongoose.Schema(
       exploreStyle: { type: String, enum: ['adventure', 'relaxed', 'family', 'other'] },
       stayPref: { type: String, enum: ['houseboat', 'cottage', 'hotel', 'resort', 'any'] },
       startDate: Date,
+      origin: { type: mongoose.Schema.Types.ObjectId, ref: 'District' }, // where the traveller starts
+      transportPref: { type: String, enum: ['any', 'bus', 'train', 'launch', 'air'], default: 'any' },
     },
     // Structured JSON produced by the generator (AI or mock) — templates render this
     output: {
@@ -43,6 +45,9 @@ const planSchema = new mongoose.Schema(
       warnings: [String],
       hiddenPlaces: [String],
       tips: [String],
+      // Computed by services/routeService.js (not by the AI): intercity options,
+      // ordered legs with coordinates and costs — drives the journey map
+      journey: { type: mongoose.Schema.Types.Mixed, default: null },
     },
     status: { type: String, enum: ['generated', 'paid', 'failed'], default: 'generated', index: true },
     paidAt: Date,
