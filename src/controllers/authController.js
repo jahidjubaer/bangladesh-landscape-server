@@ -101,17 +101,29 @@ export async function updateMe(req, res, next) {
   }
 }
 
-// PUT /auth/me/visited-districts { slugs: [...] } — replaces the user's visited map
+// PUT /auth/me/visited-districts { slugs: [...], passed: [...], home: 'slug' }
+// replaces the user's "My Bangladesh Map"
 export async function updateVisitedDistricts(req, res, next) {
   try {
-    const { slugs } = req.body || {};
-    if (!Array.isArray(slugs) || slugs.length > 64 || !slugs.every((s) => typeof s === 'string')) {
-      throw new AppError('slugs must be a list of district slugs', 400);
+    const { slugs, passed = [], home = '' } = req.body || {};
+    const isList = (l) => Array.isArray(l) && l.length <= 64 && l.every((s) => typeof s === 'string');
+    if (!isList(slugs) || !isList(passed) || typeof home !== 'string') {
+      throw new AppError('slugs/passed must be lists of district slugs', 400);
     }
-    const valid = await District.find({ slug: { $in: slugs } }).distinct('slug');
-    req.user.visitedDistricts = valid;
+    const valid = new Set(await District.find({ slug: { $in: [...slugs, ...passed, home] } }).distinct('slug'));
+    req.user.visitedDistricts = slugs.filter((s) => valid.has(s));
+    // A district is either visited or passed through, never both
+    req.user.passedDistricts = passed.filter((s) => valid.has(s) && !slugs.includes(s));
+    req.user.homeDistrict = valid.has(home) ? home : '';
     await req.user.save();
-    res.json({ success: true, data: { visitedDistricts: req.user.visitedDistricts } });
+    res.json({
+      success: true,
+      data: {
+        visitedDistricts: req.user.visitedDistricts,
+        passedDistricts: req.user.passedDistricts,
+        homeDistrict: req.user.homeDistrict,
+      },
+    });
   } catch (err) {
     next(err);
   }
