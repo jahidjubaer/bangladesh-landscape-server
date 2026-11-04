@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { SEASON_KEYS } from '../utils/seasons.js';
 
 const localized = { bn: { type: String, default: '' }, en: { type: String, default: '' } };
 
@@ -25,6 +26,8 @@ const spotSchema = new mongoose.Schema(
     },
     timeNeededHours: { type: Number, default: 0 },
     bestTime: localized,
+    // Structured best seasons (ষড়ঋতু). Empty = derived from bestTime (utils/seasons.js)
+    seasons: [{ type: String, enum: SEASON_KEYS }],
     isHidden: { type: Boolean, default: false },
     obstacles: [localized],
     warnings: [localized],

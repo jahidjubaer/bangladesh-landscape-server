@@ -1,6 +1,7 @@
 import District from '../models/District.js';
 import Spot from '../models/Spot.js';
 import AppError from '../utils/AppError.js';
+import { resolveSeasons } from '../utils/seasons.js';
 
 // ---------- Public ----------
 
@@ -29,9 +30,12 @@ export async function getBySlug(req, res, next) {
     const district = await District.findOne({ slug: req.params.slug, isLaunched: true });
     if (!district) throw new AppError('District not found', 404);
     const spots = await Spot.find({ district: district._id, isActive: true })
-      .select('slug name images category location entryCost timeNeededHours isHidden tags ratingAvg ratingCount')
-      .sort('name.bn');
-    res.json({ success: true, data: { district, spots } });
+      .select('slug name images category location entryCost timeNeededHours isHidden tags ratingAvg ratingCount bestTime seasons')
+      .sort('name.bn')
+      .lean();
+    // Resolved seasons drive the district "when to go" strip; bestTime text stays on the spot page
+    const withSeasons = spots.map(({ bestTime, ...s }) => ({ ...s, seasons: resolveSeasons({ ...s, bestTime }) }));
+    res.json({ success: true, data: { district, spots: withSeasons } });
   } catch (err) {
     next(err);
   }
