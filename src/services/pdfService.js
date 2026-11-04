@@ -26,6 +26,9 @@ function findChrome() {
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const money = (n) => `${Number(n || 0).toLocaleString('bn-BD')} টাকা`;
 
+// Serverless Chromium ships no symbol fonts, so the arrow is drawn rather than typed
+const ARROW = '<svg width="12" height="10" viewBox="0 0 12 10" style="vertical-align:middle"><path d="M0 5h10M6 1l4 4-4 4" stroke="#047857" stroke-width="1.6" fill="none"/></svg>';
+
 // Simple offline route sketch: normalized lat/lng plotted as numbered points
 function mapSvg(points) {
   if (!points?.length) return '';
@@ -37,6 +40,12 @@ function mapSvg(points) {
   const W = 680, H = 340;
   const x = (lng) => ((lng - minLng) / (maxLng - minLng || 1)) * (W - 60) + 30;
   const y = (lat) => H - (((lat - minLat) / (maxLat - minLat || 1)) * (H - 60) + 30);
+  // Labels sit right of the dot, or left of it near the right edge so they aren't clipped
+  const label = (p) => {
+    const left = x(p.lng) > W * 0.6;
+    const lx = left ? x(p.lng) - 16 : x(p.lng) + 16;
+    return `<text x="${lx.toFixed(1)}" y="${(y(p.lat) + 4).toFixed(1)}" text-anchor="${left ? 'end' : 'start'}" font-size="12" fill="#1f2937">${esc(p.name)}</text>`;
+  };
   const sorted = [...points].sort((a, b) => (a.order || 0) - (b.order || 0));
   const line = sorted.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(p.lng).toFixed(1)},${y(p.lat).toFixed(1)}`).join(' ');
   const dots = sorted
@@ -44,7 +53,7 @@ function mapSvg(points) {
       (p, i) => `
     <circle cx="${x(p.lng).toFixed(1)}" cy="${y(p.lat).toFixed(1)}" r="11" fill="#047857"/>
     <text x="${x(p.lng).toFixed(1)}" y="${(y(p.lat) + 4).toFixed(1)}" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">${i + 1}</text>
-    <text x="${(x(p.lng) + 16).toFixed(1)}" y="${(y(p.lat) + 4).toFixed(1)}" font-size="12" fill="#1f2937">${esc(p.name)}</text>`
+    ${label(p)}`
     )
     .join('');
   return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;background:#ecfdf5;border-radius:12px">
@@ -55,10 +64,10 @@ export function planHtml(plan, district, userName) {
   const o = plan.output;
   const list = (items) => (items || []).map((i) => `<li>${esc(i)}</li>`).join('');
   return `<!doctype html><html lang="bn"><head><meta charset="utf-8">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;600;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;600;800&family=Noto+Color+Emoji&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; }
-  body { font-family: 'Noto Sans Bengali', sans-serif; color: #1f2937; padding: 32px; font-size: 13px; line-height: 1.7; }
+  body { font-family: 'Noto Sans Bengali', 'Noto Color Emoji', sans-serif; color: #1f2937; padding: 32px; font-size: 13px; line-height: 1.7; }
   .hero { background: linear-gradient(120deg, #065f46, #10b981); color: #fff; border-radius: 16px; padding: 28px; margin-bottom: 22px; }
   .hero h1 { font-size: 26px; margin-bottom: 6px; }
   .meta { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; opacity: .95; margin-top: 10px; }
@@ -92,7 +101,7 @@ ${o.journey?.legs?.length ? `<h2>🧭 যাত্রাপথ ও যাতা�
 <table><tr><th>রুট</th><th>বাহন</th><th>দূরত্ব/সময়</th><th>খরচ</th></tr>
 ${o.journey.legs
   .map(
-    (l) => `<tr><td>${esc(l.from.name)} → ${esc(l.to.name)}</td><td>${esc(l.modeLabel)}</td><td>~${l.km} কিমি · ~${l.hours} ঘণ্টা</td><td>${
+    (l) => `<tr><td>${esc(l.from.name)} ${ARROW} ${esc(l.to.name)}</td><td>${esc(l.modeLabel)}</td><td>~${l.km} কিমি · ~${l.hours} ঘণ্টা</td><td>${
       l.costPerPerson ? `জনপ্রতি ${money(l.costPerPerson.min)}–${money(l.costPerPerson.max)}` : l.groupCost ? `দল ~${money(l.groupCost)}` : '—'
     }</td></tr>`
   )
@@ -145,6 +154,7 @@ export async function renderPlanPdf(plan, district, userName) {
   try {
     const page = await browser.newPage();
     await page.setContent(planHtml(plan, district, userName), { waitUntil: 'networkidle0', timeout: 60000 });
+    await page.evaluate(() => document.fonts.ready); // Bangla + emoji web fonts fully loaded before printing
     const filename = `plan-${plan.publicId}.pdf`;
     const filePath = path.join(PDF_DIR, filename);
     await page.pdf({ path: filePath, format: 'A4', printBackground: true, margin: { top: '10mm', bottom: '10mm', left: '8mm', right: '8mm' } });
