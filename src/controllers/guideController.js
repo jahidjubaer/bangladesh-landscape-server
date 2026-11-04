@@ -29,6 +29,21 @@ export async function listByDistrict(req, res, next) {
   }
 }
 
+// GET /guides/featured?limit= — top verified guides nationwide (homepage strip)
+export async function featured(req, res, next) {
+  try {
+    const limit = Math.min(12, Math.max(1, parseInt(req.query.limit, 10) || 4));
+    const guides = await GuideProfile.find({ applicationStatus: 'approved', availabilityStatus: 'active' })
+      .populate('user', 'name avatarUrl')
+      .populate('districts', 'slug name')
+      .sort('-ratingAvg -ratingCount -knowledgeScore')
+      .limit(limit);
+    res.json({ success: true, data: { guides: guides.map((g) => g.toPublicJSON()) } });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function getPublic(req, res, next) {
   try {
     const guide = await GuideProfile.findOne({ _id: req.params.id, applicationStatus: 'approved' })

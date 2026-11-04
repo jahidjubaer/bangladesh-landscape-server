@@ -16,6 +16,7 @@ const applyLimiter = rateLimit({
 
 // Public
 router.get('/districts/:slug', guideCtrl.listByDistrict);
+router.get('/featured', guideCtrl.featured);
 router.get('/:id', guideCtrl.getPublic);
 
 // Application (logged-in or brand new — account created inline)
