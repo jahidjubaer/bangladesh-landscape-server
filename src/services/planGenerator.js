@@ -80,7 +80,8 @@ ${JSON.stringify(facts, null, 1)}
 USER_REQUEST:
 ${JSON.stringify(request, null, 1)}
 
-কাজ: এই ইউজারের জন্য ${request.days} দিন ${request.nights} রাতের একটি বাস্তবসম্মত ট্যুর প্ল্যান বানাও। startDate থেকে ঋতু বুঝে পরিকল্পনা সাজাও (বর্ষা/শীত অনুযায়ী)। বাজেট মোট ${request.totalBudgetBDT} টাকা (${request.members} জনের জন্য) — যদি বাজেটে সব স্পট কভার করা অসম্ভব হয়, budgetVerdict-এ সততার সাথে বলো এবং প্ল্যান সেই অনুযায়ী ছোট করো। কাছাকাছি স্পটগুলো একই দিনে রাখো (lat/lng দেখে)। isHidden স্পটগুলো hiddenPlaces-এও উল্লেখ করো। VERIFIED_FACTS.journey থাকলে প্রথম দিনে যাত্রা (startFrom থেকে) আর শেষ দিনে ফিরতি যাত্রা রাখো, প্রতিদিনের transport ঘরে journey.legs অনুযায়ী বাহন ও খরচ লেখো, এবং costBreakdown-এ যাতায়াত খরচ totalTransportCostBDT ব্যবহার করো।
+কাজ: এই ইউজারের জন্য ${request.days} দিন ${request.nights} রাতের একটি বাস্তবসম্মত ট্যুর প্ল্যান বানাও। startDate থেকে ঋতু বুঝে পরিকল্পনা সাজাও (বর্ষা/শীত অনুযায়ী)। বাজেট মোট ${request.totalBudgetBDT} টাকা (${request.members} জনের জন্য) — যদি বাজেটে সব স্পট কভার করা অসম্ভব হয়, budgetVerdict-এ সততার সাথে বলো এবং প্ল্যান সেই অনুযায়ী ছোট করো। কাছাকাছি স্পটগুলো একই দিনে রাখো (lat/lng দেখে)। isHidden স্পটগুলো hiddenPlaces-এও উল্লেখ করো। VERIFIED_FACTS.journey থাকলে প্রথম দিনে যাত্রা (startFrom থেকে) আর শেষ দিনে ফিরতি যাত্রা রাখো, প্রতিদিনের transport ঘরে journey.legs অনুযায়ী বাহন ও খরচ লেখো, এবং costBreakdown-এর যাতায়াত সারিতে journey-র মোট যাতায়াত খরচের সংখ্যাটি বসাও।
+costBreakdown-এ অবশ্যই আলাদা আলাদা সারি থাকবে: যাতায়াত, থাকা (${request.nights} রাত), খাওয়া (${request.days} দিন), এবং প্রবেশ ফি/নৌকা/গাইড/অন্যান্য — প্রতিটির খরচ ${request.members} জনের মোট হিসাবে; totalCostEstimate = সব সারির যোগফল এবং days-এর costEstimate-গুলোর যোগফলের সাথে মিল রাখো। কোনো টেক্সটে JSON ফিল্ডের নাম বা ইংরেজি ভেরিয়েবল নাম (যেমন transportCostBDT, journey.legs) লিখবে না — সাধারণ বাংলায় লেখো।
 
 শুধুমাত্র নিচের কাঠামোর একটি JSON অবজেক্ট আউটপুট দাও — কোনো markdown, ব্যাখ্যা বা কোড ফেন্স নয়। সব টেক্সট বাংলায়:
 {
@@ -89,7 +90,7 @@ ${JSON.stringify(request, null, 1)}
  "budgetVerdict": "বাজেট যথেষ্ট/টানাটানি/অপর্যাপ্ত — এক-দুই বাক্যে সৎ মূল্যায়ন",
  "days": [{"dayNumber": 1, "title": "দিনের শিরোনাম", "activities": ["সকাল: ...", "দুপুর: ...", "বিকেল: ...", "রাত: ..."], "meals": "কোথায় কী খাবেন", "stay": "কোথায় থাকবেন", "transport": "সেদিনের যাতায়াত ও আনুমানিক ভাড়া", "costEstimate": 5000}],
  "mapPoints": [{"name": "স্পটের নাম", "lat": 25.1, "lng": 91.1, "order": 1}],
- "costBreakdown": [{"item": "যাতায়াত (ঢাকা-সুনামগঞ্জ বাস, ${request.members} জন)", "amount": 3000}],
+ "costBreakdown": [{"item": "যাতায়াত (বাস ও লোকাল বাহন, ${request.members} জন)", "amount": 6000}, {"item": "থাকা (${request.nights} রাত)", "amount": 4000}, {"item": "খাওয়া (${request.days} দিন)", "amount": 3000}, {"item": "প্রবেশ ফি, নৌকা ও অন্যান্য", "amount": 2000}],
  "totalCostEstimate": 15000,
  "warnings": ["প্রাসঙ্গিক সতর্কতাগুলো"],
  "hiddenPlaces": ["লুকানো স্পটের নাম ও এক লাইনে কেন যাবেন"],
