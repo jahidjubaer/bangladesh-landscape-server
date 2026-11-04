@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
+import { writeLimiter } from '../middlewares/rateLimits.js';
 import {
   register, login, logout, me, updateMe, updateVisitedDistricts, changePassword, updateAvatar,
 } from '../controllers/authController.js';
@@ -24,6 +25,6 @@ router.get('/me', optionalAuth, me);
 router.patch('/me', requireAuth, updateMe);
 router.put('/me/visited-districts', requireAuth, updateVisitedDistricts);
 router.post('/change-password', requireAuth, authLimiter, changePassword);
-router.post('/avatar', requireAuth, uploadImage.single('image'), updateAvatar);
+router.post('/avatar', requireAuth, writeLimiter, uploadImage.single('image'), updateAvatar);
 
 export default router;

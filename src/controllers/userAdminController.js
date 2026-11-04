@@ -6,6 +6,7 @@ import Blog from '../models/Blog.js';
 import GuideProfile from '../models/GuideProfile.js';
 import EventBooking from '../models/EventBooking.js';
 import AppError from '../utils/AppError.js';
+import { escapeRegex } from '../middlewares/sanitize.js';
 
 // ---------- Users ----------
 
@@ -13,7 +14,7 @@ export async function listUsers(req, res, next) {
   try {
     const filter = {};
     if (req.query.q) {
-      const q = String(req.query.q).trim();
+      const q = escapeRegex(String(req.query.q).trim().slice(0, 80));
       filter.$or = [{ name: { $regex: q, $options: 'i' } }, { phone: { $regex: q } }];
     }
     if (req.query.role) filter.roles = req.query.role;

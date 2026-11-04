@@ -10,7 +10,8 @@ export function connectDB() {
       console.error('MongoDB connection error:', err.message);
     });
     connecting = mongoose
-      .connect(env.mongodbUri)
+      // fail fast on a bad URI / blocked IP instead of hanging until the host's timeout
+      .connect(env.mongodbUri, { serverSelectionTimeoutMS: 8000, maxPoolSize: 10 })
       .then(() => {
         console.log(`MongoDB connected: ${mongoose.connection.host}/${mongoose.connection.name}`);
       })

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { beaconLimiter } from '../middlewares/rateLimits.js';
 import { requireAuth } from '../middlewares/auth.js';
 import * as favoriteCtrl from '../controllers/favoriteController.js';
 
@@ -8,6 +9,6 @@ router.use(requireAuth);
 
 router.get('/', favoriteCtrl.list);
 router.get('/ids', favoriteCtrl.ids);
-router.post('/toggle', favoriteCtrl.toggle);
+router.post('/toggle', beaconLimiter, favoriteCtrl.toggle);
 
 export default router;

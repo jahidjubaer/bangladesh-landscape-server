@@ -1,11 +1,12 @@
 import { Router } from 'express';
+import { writeLimiter } from '../middlewares/rateLimits.js';
 import { requireAuth } from '../middlewares/auth.js';
 import * as payCtrl from '../controllers/paymentController.js';
 
 const router = Router();
 
-router.post('/init', requireAuth, payCtrl.init);
-router.post('/manual-bkash', requireAuth, payCtrl.submitManualBkash);
+router.post('/init', requireAuth, writeLimiter, payCtrl.init);
+router.post('/manual-bkash', requireAuth, writeLimiter, payCtrl.submitManualBkash);
 
 // Gateway-facing endpoints (no auth — SSLCommerz posts to these)
 router.post('/callback/success', payCtrl.callbackSuccess);

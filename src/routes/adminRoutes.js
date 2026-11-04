@@ -11,6 +11,7 @@ import * as userAdminCtrl from '../controllers/userAdminController.js';
 import { analytics } from '../controllers/analyticsController.js';
 import * as eventCtrl from '../controllers/eventController.js';
 import * as reviewCtrl from '../controllers/contentReviewController.js';
+import * as errorCtrl from '../controllers/errorLogController.js';
 import AppError from '../utils/AppError.js';
 
 const router = Router();
@@ -89,5 +90,10 @@ router.get('/content-review/flags', reviewCtrl.listFlags);
 router.post('/content-review/flags', reviewCtrl.createFlag);
 router.patch('/content-review/flags/:id', reviewCtrl.updateFlag);
 router.get('/content-review/gaps', reviewCtrl.dataGaps);
+
+// Error monitoring (server 5xx + browser crash reports)
+router.get('/errors', errorCtrl.listErrors);
+router.patch('/errors/:id', errorCtrl.setResolved);
+router.delete('/errors', errorCtrl.clearResolved);
 
 export default router;

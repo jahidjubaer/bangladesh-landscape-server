@@ -3,6 +3,7 @@ import Blog from '../models/Blog.js';
 import District from '../models/District.js';
 import AppError from '../utils/AppError.js';
 import { notify } from '../services/notifyService.js';
+import { escapeRegex } from '../middlewares/sanitize.js';
 
 const SANITIZE_OPTS = {
   allowedTags: [
@@ -53,10 +54,8 @@ export async function list(req, res, next) {
       if (d) filter.district = d._id;
     }
     if (req.query.q) {
-      filter.$or = [
-        { 'title.bn': { $regex: req.query.q, $options: 'i' } },
-        { excerpt: { $regex: req.query.q, $options: 'i' } },
-      ];
+      const rx = { $regex: escapeRegex(String(req.query.q).trim().slice(0, 80)), $options: 'i' };
+      filter.$or = [{ 'title.bn': rx }, { excerpt: rx }];
     }
     const page = Math.max(1, Number(req.query.page) || 1);
     const limit = 12;

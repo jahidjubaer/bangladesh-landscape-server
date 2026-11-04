@@ -1,4 +1,5 @@
 import env from '../config/env.js';
+import { logError } from '../services/errorLogService.js';
 
 export function notFound(req, res) {
   res.status(404).json({ success: false, message: `Route not found: ${req.method} ${req.originalUrl}` });
@@ -18,8 +19,37 @@ export function errorHandler(err, req, res, next) {
     return res.status(400).json({ success: false, message });
   }
 
-  const status = err.statusCode || 500;
-  if (status >= 500) console.error(err);
+  // Malformed ObjectId in a URL or body (e.g. /bookings/abc) — client error, not a crash
+  if (err.name === 'CastError') {
+    return res.status(400).json({ success: false, message: `Invalid ${err.path || 'value'}` });
+  }
+
+  // Body parser: broken JSON / oversized body
+  if (err.type === 'entity.parse.failed') {
+    return res.status(400).json({ success: false, message: 'Invalid JSON body' });
+  }
+  if (err.type === 'entity.too.large') {
+    return res.status(413).json({ success: false, message: 'Request is too large' });
+  }
+
+  // Multer upload limits
+  if (err.name === 'MulterError') {
+    const tooBig = err.code === 'LIMIT_FILE_SIZE';
+    return res.status(tooBig ? 413 : 400).json({ success: false, message: tooBig ? 'File is too large' : 'Upload rejected' });
+  }
+
+  const status = err.statusCode || err.status || 500;
+  if (status >= 500) {
+    console.error(err);
+    logError({
+      source: 'server',
+      message: err.message,
+      stack: err.stack,
+      path: req.originalUrl?.split('?')[0],
+      method: req.method,
+      userAgent: req.get('user-agent'),
+    });
+  }
 
   res.status(status).json({
     success: false,

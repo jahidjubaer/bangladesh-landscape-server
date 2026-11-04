@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { beaconLimiter } from '../middlewares/rateLimits.js';
 import * as districtCtrl from '../controllers/districtController.js';
 import * as spotCtrl from '../controllers/spotController.js';
 import * as adCtrl from '../controllers/adController.js';
@@ -11,7 +12,7 @@ import { track } from '../controllers/trackController.js';
 
 const router = Router();
 
-router.post('/track', track);
+router.post('/track', beaconLimiter, track);
 router.get('/stats', publicStats);
 router.get('/gallery', gallery);
 router.get('/search', globalSearch);

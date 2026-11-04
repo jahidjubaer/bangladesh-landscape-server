@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { writeLimiter } from '../middlewares/rateLimits.js';
 import { requireAuth, requireRole } from '../middlewares/auth.js';
 import * as bookingCtrl from '../controllers/bookingController.js';
 
@@ -6,11 +7,11 @@ const router = Router();
 
 router.use(requireAuth);
 
-router.post('/guide', bookingCtrl.createGuideBooking);
-router.post('/listing', bookingCtrl.createListingBooking);
+router.post('/guide', writeLimiter, bookingCtrl.createGuideBooking);
+router.post('/listing', writeLimiter, bookingCtrl.createListingBooking);
 router.get('/me', bookingCtrl.myBookings);
 router.patch('/:id/cancel', bookingCtrl.cancelBooking);
-router.post('/:id/review', bookingCtrl.reviewBooking);
+router.post('/:id/review', writeLimiter, bookingCtrl.reviewBooking);
 
 // Guide side
 router.get('/guide/incoming', requireRole('guide'), bookingCtrl.guideBookings);
