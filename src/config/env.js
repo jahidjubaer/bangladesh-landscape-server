@@ -9,6 +9,13 @@ const env = {
   jwtSecret: process.env.JWT_SECRET,
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
+  // Google sign-in through Firebase Auth (free Spark plan); empty = feature off
+  firebaseProjectId: process.env.FIREBASE_PROJECT_ID || '',
+  // Comma-separated Google emails that get the admin role when they sign in with Google
+  adminEmails: (process.env.ADMIN_EMAILS || '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean),
 };
 
 if (!env.jwtSecret) {

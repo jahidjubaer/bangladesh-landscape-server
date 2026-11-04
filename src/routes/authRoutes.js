@@ -2,7 +2,7 @@ import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { writeLimiter } from '../middlewares/rateLimits.js';
 import {
-  register, login, logout, me, updateMe, updateVisitedDistricts, changePassword, updateAvatar,
+  register, login, logout, googleLogin, me, updateMe, updateVisitedDistricts, changePassword, updateAvatar,
 } from '../controllers/authController.js';
 import { requireAuth, optionalAuth } from '../middlewares/auth.js';
 import { uploadImage } from '../middlewares/upload.js';
@@ -19,6 +19,7 @@ const authLimiter = rateLimit({
 
 router.post('/register', authLimiter, register);
 router.post('/login', authLimiter, login);
+router.post('/google', authLimiter, googleLogin);
 router.post('/logout', logout);
 // optionalAuth: anonymous visitors get 200 {user:null} instead of console-noise 401s
 router.get('/me', optionalAuth, me);

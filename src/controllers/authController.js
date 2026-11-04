@@ -4,6 +4,31 @@ import AppError from '../utils/AppError.js';
 import { signToken, cookieOptions, COOKIE_NAME } from '../utils/token.js';
 import { validateRegister, validateLogin } from '../validators/authValidator.js';
 import { notify } from '../services/notifyService.js';
+import { verifyFirebaseIdToken, isAdminEmail } from '../services/firebaseAuth.js';
+
+// Admin emails can only be claimed by a verified Google sign-in, so nobody can park one
+// on their own account and block (or capture) the real admin's first Google login.
+function assertEmailNotReserved(email, user) {
+  if (email && isAdminEmail(email) && !user?.roles?.includes('admin')) {
+    throw new AppError('This email address cannot be used', 400);
+  }
+}
+
+// Referral: a valid code rewards both sides with one plan credit
+async function findReferrer(ref) {
+  if (!ref || typeof ref !== 'string') return null;
+  return User.findOne({ referralCode: ref.trim().toUpperCase() });
+}
+
+async function rewardReferral(referrer, user) {
+  if (!referrer) return;
+  user.freePlanCredits += 1;
+  await user.save();
+  referrer.freePlanCredits += 1;
+  referrer.referralCount += 1;
+  await referrer.save();
+  await notify(referrer._id, 'referral-joined', { name: user.name }, '/profile');
+}
 
 function sendAuthResponse(res, user, statusCode, message) {
   const token = signToken(user._id.toString());
@@ -16,13 +41,9 @@ function sendAuthResponse(res, user, statusCode, message) {
 export async function register(req, res, next) {
   try {
     const { name, phone, email, password } = validateRegister(req.body);
+    assertEmailNotReserved(email);
 
-    // Referral: a valid code rewards both sides with one plan credit
-    let referrer = null;
-    if (req.body.ref && typeof req.body.ref === 'string') {
-      referrer = await User.findOne({ referralCode: req.body.ref.trim().toUpperCase() });
-    }
-
+    const referrer = await findReferrer(req.body.ref);
     const passwordHash = await User.hashPassword(password);
     const user = await User.create({
       name,
@@ -33,15 +54,7 @@ export async function register(req, res, next) {
       ...(referrer && { referredBy: referrer._id }),
     });
 
-    if (referrer) {
-      user.freePlanCredits += 1;
-      await user.save();
-      referrer.freePlanCredits += 1;
-      referrer.referralCount += 1;
-      await referrer.save();
-      await notify(referrer._id, 'referral-joined', { name: user.name }, '/profile');
-    }
-
+    await rewardReferral(referrer, user);
     sendAuthResponse(res, user, 201, 'Registration successful');
   } catch (err) {
     next(err);
@@ -60,6 +73,54 @@ export async function login(req, res, next) {
     if (user.status === 'suspended') throw new AppError('Account suspended', 403);
 
     sendAuthResponse(res, user, 200, 'Login successful');
+  } catch (err) {
+    next(err);
+  }
+}
+
+// POST /auth/google { idToken } (a Firebase Auth ID token from signInWithPopup)
+export async function googleLogin(req, res, next) {
+  try {
+    const g = await verifyFirebaseIdToken(req.body?.idToken);
+    if (!g.email || !g.emailVerified) throw new AppError('Your Google account has no verified email', 401);
+    const makeAdmin = isAdminEmail(g.email);
+
+    let user = await User.findOne({ googleUid: g.uid });
+    let status = 200;
+
+    if (!user) {
+      const sameEmail = await User.findOne({ email: g.email });
+      if (sameEmail) {
+        // Emails on password accounts are never verified, so only link when the account is
+        // already an admin listed in ADMIN_EMAILS (both set by the site owner).
+        if (sameEmail.googleUid || !(makeAdmin && sameEmail.roles.includes('admin'))) {
+          throw new AppError('An account with this email already exists. Log in with your mobile number and password.', 409);
+        }
+        sameEmail.googleUid = g.uid;
+        user = sameEmail;
+      } else {
+        user = new User({
+          name: g.name.length >= 2 ? g.name.slice(0, 100) : g.email.split('@')[0],
+          email: g.email,
+          googleUid: g.uid,
+          avatarUrl: g.picture,
+          referralCode: User.newReferralCode(),
+          ...(makeAdmin && { roles: ['user', 'admin'] }),
+        });
+        status = 201;
+      }
+    }
+
+    if (user.status === 'suspended') throw new AppError('Account suspended', 403);
+    // Grant only: removing an email from ADMIN_EMAILS does not demote (use the admin users page)
+    if (makeAdmin && !user.roles.includes('admin')) user.roles = [...new Set([...user.roles, 'admin'])];
+    if (user.isNew || user.isModified()) await user.save();
+    if (status === 201) {
+      const referrer = await findReferrer(req.body?.ref);
+      if (referrer && !referrer._id.equals(user._id)) await rewardReferral(referrer, user);
+    }
+
+    sendAuthResponse(res, user, status, 'Login successful');
   } catch (err) {
     next(err);
   }
@@ -90,8 +151,17 @@ export async function updateMe(req, res, next) {
       req.user.name = name.trim();
     }
     if (email !== undefined) {
-      if (email === '' || email === null) req.user.email = undefined;
-      else if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) req.user.email = String(email).toLowerCase().trim();
+      if (email === '' || email === null) {
+        if (req.user.googleUid) throw new AppError('The email of a Google account cannot be removed', 400);
+        req.user.email = undefined;
+      }
+      else if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        const next = String(email).toLowerCase().trim();
+        // A Google account's email is its verified identity; keep it as Google reports it
+        if (req.user.googleUid && next !== req.user.email) throw new AppError('The email of a Google account cannot be changed', 400);
+        assertEmailNotReserved(next, req.user);
+        req.user.email = next;
+      }
       else throw new AppError('Email address is not valid', 400);
     }
     await req.user.save();

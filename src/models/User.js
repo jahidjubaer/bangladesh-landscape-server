@@ -7,10 +7,23 @@ const ROLES = ['user', 'guide', 'partner', 'moderator', 'admin'];
 const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true, maxlength: 100 },
-    // Phone-first identity: phone is required, email optional (foreign users may prefer email later)
-    phone: { type: String, required: true, unique: true, trim: true },
-    email: { type: String, unique: true, sparse: true, lowercase: true, trim: true },
-    passwordHash: { type: String, required: true, select: false },
+    // Phone-first identity for password accounts; Google accounts sign up without a phone
+    phone: {
+      type: String,
+      trim: true,
+      required() {
+        return !this.googleUid;
+      },
+    },
+    email: { type: String, lowercase: true, trim: true },
+    passwordHash: {
+      type: String,
+      select: false,
+      required() {
+        return !this.googleUid;
+      },
+    },
+    googleUid: { type: String }, // Firebase Auth uid of the linked Google account
     roles: { type: [String], enum: ROLES, default: ['user'] },
     avatarUrl: { type: String, default: '' },
     verifiedAuthor: { type: Boolean, default: false },
@@ -27,7 +40,14 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Partial (not sparse) unique indexes: accounts without the field never collide.
+// Run `npm run migrate:user-indexes` once on an existing database.
+userSchema.index({ phone: 1 }, { unique: true, partialFilterExpression: { phone: { $type: 'string' } } });
+userSchema.index({ email: 1 }, { unique: true, partialFilterExpression: { email: { $type: 'string' } } });
+userSchema.index({ googleUid: 1 }, { unique: true, partialFilterExpression: { googleUid: { $type: 'string' } } });
+
 userSchema.methods.comparePassword = function (plain) {
+  if (!this.passwordHash) return Promise.resolve(false); // Google-only account
   return bcrypt.compare(plain, this.passwordHash);
 };
 
@@ -58,8 +78,9 @@ userSchema.methods.toSafeJSON = function () {
   return {
     id: this._id,
     name: this.name,
-    phone: this.phone,
+    phone: this.phone || null,
     email: this.email || null,
+    google: Boolean(this.googleUid),
     roles: this.roles,
     avatarUrl: this.avatarUrl,
     verifiedAuthor: this.verifiedAuthor,
