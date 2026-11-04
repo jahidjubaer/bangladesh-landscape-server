@@ -10,6 +10,7 @@ import * as listingCtrl from '../controllers/listingController.js';
 import * as userAdminCtrl from '../controllers/userAdminController.js';
 import { analytics } from '../controllers/analyticsController.js';
 import * as eventCtrl from '../controllers/eventController.js';
+import * as reviewCtrl from '../controllers/contentReviewController.js';
 import AppError from '../utils/AppError.js';
 
 const router = Router();
@@ -82,5 +83,11 @@ router.post('/uploads', uploadImage.single('image'), async (req, res, next) => {
     next(err);
   }
 });
+
+// Content review: doubtful facts to verify in the field + live data gaps
+router.get('/content-review/flags', reviewCtrl.listFlags);
+router.post('/content-review/flags', reviewCtrl.createFlag);
+router.patch('/content-review/flags/:id', reviewCtrl.updateFlag);
+router.get('/content-review/gaps', reviewCtrl.dataGaps);
 
 export default router;
