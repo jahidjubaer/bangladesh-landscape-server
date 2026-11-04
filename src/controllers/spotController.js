@@ -56,17 +56,20 @@ export async function browse(req, res, next) {
     }
 
     // Photo-first ordering: spots with images lead the grid
-    const spots = await Spot.find(filter)
-      .populate('district', 'slug name isVerified')
-      .select('slug name category images tags isHidden district ratingAvg ratingCount')
-      .sort({ 'images.0': -1, 'name.bn': 1 })
-      .skip((page - 1) * limit)
-      .limit(limit + 1);
+    const [spots, total] = await Promise.all([
+      Spot.find(filter)
+        .populate('district', 'slug name isVerified')
+        .select('slug name category images tags isHidden district ratingAvg ratingCount timeNeededHours')
+        .sort({ 'images.0': -1, 'name.bn': 1 })
+        .skip((page - 1) * limit)
+        .limit(limit + 1),
+      Spot.countDocuments(filter),
+    ]);
 
     const hasMore = spots.length > limit;
     res.json({
       success: true,
-      data: { spots: spots.slice(0, limit), page, hasMore },
+      data: { spots: spots.slice(0, limit), page, hasMore, total },
     });
   } catch (err) {
     next(err);
